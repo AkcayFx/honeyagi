@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assessment Lab</title><link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="logo">A</span> Assessment Lab</a>
+    <div class="workspace-label">YOUR WORKSPACE</div>
+    <button class="nav active" id="overview-nav">◈ &nbsp; Assessments</button>
+    <a class="nav" href="#audit-section">☷ &nbsp; Audit trail</a>
+    <div class="sidebar-bottom"><span class="online-dot"></span> Local lab <span class="version">v0.1</span><p>Controlled execution foundation<br>Thesis milestone 01</p></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>Workspace <span class="muted">/</span> Assessments</span><span class="lab-badge">LOOPBACK DEMO</span></header>
+    <section class="page-heading"><div><div class="eyebrow">SECURITY ASSESSMENT PLATFORM</div><h1>Your assessment workspace</h1><p>Review each action. Run an approved check. Keep the evidence.</p></div><button id="new-button" class="primary">+ New assessment</button></section>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section id="connect-panel" class="panel connect"><div><h2>Connect to your local workspace</h2><p>Paste the access token printed in the terminal when you start the server.</p></div><form id="connect-form"><label class="sr-only" for="token">Access token</label><input type="password" id="token" placeholder="Access token" required autocomplete="off"><button class="primary">Connect</button></form></section>
+    <section class="metrics" aria-label="Workspace metrics">
+      <article><div class="metric-title">Assessments <span>◈</span></div><strong id="assessment-count">0</strong><small>Exact target scopes</small></article>
+      <article><div class="metric-title">Awaiting approval <span>◷</span></div><strong id="pending-count">0</strong><small>Review before execution</small></article>
+      <article><div class="metric-title">Completed checks <span>✓</span></div><strong id="completed-count">0</strong><small>Evidence captured</small></article>
+      <article><div class="metric-title">Latest observations <span>△</span></div><strong id="finding-count">0</strong><small>Selected assessment · latest per URL</small></article>
+    </section>
+    <section id="create-panel" class="panel" hidden>
+      <div class="section-heading"><h2>Create an assessment</h2><button id="cancel-create" class="quiet" aria-label="Close create form">×</button></div>
+      <form id="create-form" class="create-form"><label>Assessment name<input id="assessment-name" maxlength="100" placeholder="Web application baseline" required></label><fieldset><legend>Allowed demo targets</legend><label class="check"><input type="checkbox" name="target" value="http://127.0.0.1:8001/vulnerable" checked> /vulnerable <span class="muted">Missing headers</span></label><label class="check"><input type="checkbox" name="target" value="http://127.0.0.1:8001/hardened" checked> /hardened <span class="muted">Configured headers</span></label><label class="check"><input type="checkbox" name="target" value="http://127.0.0.1:8001/redirect"> /redirect <span class="muted">Boundary test</span></label></fieldset><label class="check"><input id="authorization" type="checkbox" required> I am authorized to assess these local demo targets.</label><button class="primary">Create assessment</button></form>
+    </section>
+    <div class="workspace-grid">
+      <section class="panel assessment-panel"><div class="section-heading"><h2>Assessments</h2><span class="subtle-pill">LOCAL</span></div><div id="assessment-list"><div class="empty"><span class="empty-icon">◈</span><h3>A clean starting point</h3><p>Create your first assessment to define its scope and start a controlled check.</p></div></div></section>
+      <section class="panel actions-panel"><div class="section-heading"><div><h2 id="selected-name">Action queue</h2><p id="selected-scope">Select an assessment to get started.</p></div><button id="export-button" class="secondary" hidden>↓ JSON report</button></div>
+        <form id="proposal-form" class="proposal-form" hidden><label>Target URL<select id="proposal-target"></select></label><label>Reason for this check<input id="rationale" value="Check the HTTP security-header baseline" maxlength="1000" required></label><button class="secondary">+ Propose header check</button></form>
+        <div id="action-list"><div class="empty compact"><span class="empty-icon">↗</span><h3>Execution starts with a proposal</h3><p>Every check moves through proposal, approval, and execution.</p></div></div>
+      </section>
+    </div>
+    <section id="evidence-section" class="panel evidence-panel" hidden><div class="section-heading"><div><div class="eyebrow">CAPTURED OUTPUT</div><h2 id="evidence-title">Evidence</h2></div><button id="close-evidence" class="quiet">Close</button></div><p id="evidence-description"></p><div id="findings"></div><details><summary>Inspect captured evidence and SHA-256</summary><pre id="evidence-json"></pre></details></section>
+    <section id="audit-section" class="panel audit-panel"><div class="section-heading"><div><h2>Audit trail</h2><p>Proposals, decisions, and execution events in order.</p></div><span id="integrity" class="subtle-pill">NO EVENTS</span></div><div id="audit-list" class="muted audit-empty">Your assessment activity will appear here.</div></section>
+    <footer><span><span class="online-dot"></span> Human-controlled execution</span><span>Header observations · AI planning scheduled for milestone 02</span></footer>
+  </main>
+</body></html>
