@@ -57,7 +57,7 @@ def test_static_dashboard_security_headers(lab):
     c, *_ = lab
     response = c.get('/')
     assert response.status_code == 200
-    assert 'Assessment Lab' in response.text
+    assert 'HoneyAGI' in response.text
     assert "script-src 'self'" in response.headers['content-security-policy']
     assert response.headers['x-content-type-options'] == 'nosniff'
     assert c.get('/static/app.js').status_code == 200

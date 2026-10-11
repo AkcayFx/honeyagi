@@ -1,10 +1,12 @@
-# HoneyAGI — milestone 1
+# HoneyAGI — day 2 (v0.2)
 
 Working foundation for **Design and Implementation of an AI-Assisted Security Assessment Platform with Controlled Tool Execution**.
 
 This version creates scoped assessments, proposes a real HTTP header check, requires a human decision, executes an approved action once, and stores evidence plus a hash-linked audit trail in SQLite. It includes a browser dashboard, retests, JSON reports, a deliberately incomplete demo target, and a hardened comparison target.
 
-**Current scope:** one local operator, one server process, the bundled loopback demo. AI planning and general-purpose scanner workers are milestone 2 work. No API key is needed to run milestone 1.
+**Current scope:** one local operator, one server process, the bundled loopback demo, and a deterministic local planner. The planner is rule-based, not a live LLM. A live AI adapter and general-purpose scanner workers are later work. No API key is needed for this version.
+
+Day 2 adds a typed planner interface, bounded/schema-checked planner output, persisted goals and provenance, transactional pending proposals, request replay protection, and a **Generate plan** dashboard workflow. Existing databases are upgraded without deleting day-one assessments, evidence, or audit records. See [day-two implementation notes](docs/DAY_2.md).
 
 ## Run locally
 
@@ -24,7 +26,7 @@ This version creates scoped assessments, proposes a real HTTP header check, requ
    ```
 
 3. Open <http://127.0.0.1:8000>. Copy the **Access token** printed in your terminal into the dashboard and click **Connect**.
-4. Create an assessment with the two default targets. Propose a check for `/vulnerable`, approve it, and click **Run check**. You should see three header observations. Repeat for `/hardened`; the three checks should produce no observations.
+4. Create an assessment with the two default targets. Enter an **Assessment goal** and click **Generate plan**. The rule-based baseline planner proposes one pending header check for each scoped URL without an existing check. Approve a proposal for `/vulnerable` and click **Run check**. You should see three header observations. Repeat for `/hardened`; the three checks should produce no observations. You can also propose a check manually.
 5. Choose **View evidence**, **Propose retest**, or **JSON report**. Every retest needs a new approval. Stop both services with Ctrl+C in the terminal.
 
 On macOS/Linux, replace `.venv\Scripts\python.exe` with `.venv/bin/python`.
@@ -37,7 +39,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-56 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, and audit/evidence integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
+96 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, concurrent request replay, mid-generation scope changes, database migration, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
 
 ## Project map
 
@@ -48,6 +50,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 | `app/tools.py` | Header adapter, bounded execution, observations and comparisons |
 | `app/db.py` | SQLite transactions, atomic claims, evidence, hash-linked audit |
 | `app/models.py` | Strict request schemas; additional fields rejected |
+| `app/planning.py` | Planner protocol, fake provider, output validation and orchestration |
 | `app/config.py` | Database path, token, fixed local boundaries |
 | `app/static/` | Responsive HTML/CSS/JavaScript dashboard |
 | `app/demo.py` | Missing-header, configured-header, and redirect targets |
@@ -92,3 +95,5 @@ The dashboard keeps the token in JavaScript memory only. Reloading requires reco
 The audit is hash-linked and evidence is SHA-256 hashed. Reports verify evidence hashes against completion events as well as the audit chain. This detects ordinary modifications; someone controlling the whole database can rewrite hashes or truncate the log. It is not tamper-proof storage.
 
 See [the API examples](docs/API.md), [threat model](docs/THREAT_MODEL.md), and [roadmap](docs/ROADMAP.md) before extending the project. Official implementation references: [FastAPI lifespan testing](https://fastapi.tiangolo.com/advanced/testing-events/), [HTTPX API](https://www.python-httpx.org/api/), [HTTPX proxy environment handling](https://www.python-httpx.org/environment_variables/).
+
+The planner records your goal but the current fake provider supports only a fixed HTTP header baseline. It does not infer arbitrary security procedures from natural language. Generating a plan never approves or executes its actions. It skips URLs with any prior check, including rejected or failed ones; use the existing explicit retest flow when appropriate. Exact same-goal request IDs replay a saved result. Changing the goal, assessment, or provider while reusing an ID returns a conflict.

@@ -6,6 +6,8 @@ Controlled execution, strict scope, operator decisions, real header adapter, loc
 
 ## Milestone 2 — AI proposes, operator decides
 
+Day 2 completes the typed provider interface, deterministic fake provider, pending-proposal generation, dashboard planning workflow, provenance/report integration, and adversarial validation tests. No live LLM adapter is implemented yet.
+
 1. Define `Planner` and `PlanRequest`/`PlanResponse` schemas. A plan consists of rationale plus proposed allowlisted actions; it has no approval or execution fields.
 2. Build a deterministic fake provider for repeatable tests and an explicit “Generate plan” dashboard action.
 3. Route generated actions through the existing schema and policy validation. Store planner provenance and model identifiers separately from tool evidence.
@@ -24,4 +26,4 @@ Compare manual planning, deterministic planning, and LLM planning on the same fi
 
 ## Meaningful commits
 
-Suggested next commits: `feat: add typed planner interface`, `feat: generate pending proposals with fake planner`, `test: reject injected and out-of-scope model actions`, `feat: integrate one live planner provider`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. Link an actual GitHub repository before pushing; no remote is configured by this starter.
+Day-two commit: `feat: add validated assessment planning and provenance`. Suggested next commits: `feat: integrate one live planner provider`, `test: evaluate live planner failures and prompt injection`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. The repository is `AkcayFx/honeyagi`. Day-two changes are prepared locally; push only when requested.

@@ -11,15 +11,17 @@ from .db import Store, digest, ExecutionBusy
 from .models import AssessmentInput, ProposalInput, DecisionInput
 from .policy import PolicyError, validate_target, validate_action
 from .tools import HeaderChecker, compare
+from .planning import FakePlanner, PlanningService, PlanInput, PlanningError
 
 
 STATIC = Path(__file__).parent / "static"
 
 
-def create_app(settings=None, checker=None):
+def create_app(settings=None, checker=None, planner=None):
     settings = settings or Settings()
     store = Store(settings.db_path)
     checker = checker or HeaderChecker(settings.tool_timeout)
+    planning = PlanningService(store, planner or FakePlanner(), settings)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -27,7 +29,7 @@ def create_app(settings=None, checker=None):
         print(f"\nDashboard: http://127.0.0.1:8000\nAccess token: {settings.token}\n", flush=True)
         yield
 
-    app = FastAPI(title="Assessment Lab", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="HoneyAGI", version="0.2.0", lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.settings = store, settings
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
@@ -84,7 +86,12 @@ def create_app(settings=None, checker=None):
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": "0.2.0"}
+
+    @app.get("/api/v1/planner", dependencies=auth)
+    def planner_info():
+        return {**planning.info.model_dump(), "mode": "rule_based", "live_ai": False,
+                "allowed_tools": ["http_headers"], "requires_approval": True}
 
     @app.get("/api/v1/assessments", dependencies=auth)
     def list_assessments():
@@ -100,7 +107,16 @@ def create_app(settings=None, checker=None):
 
     @app.get("/api/v1/assessments/{assessment_id}", dependencies=auth)
     def get_assessment(assessment_id: str):
-        return {**assessment_or_404(assessment_id), "actions": store.list_actions(assessment_id)}
+        return {**assessment_or_404(assessment_id), "actions": store.list_actions(assessment_id), "plans": store.list_plans(assessment_id)}
+
+    @app.post("/api/v1/assessments/{assessment_id}/plans", dependencies=auth)
+    async def generate_plan(assessment_id: str, data: PlanInput):
+        assessment_or_404(assessment_id)
+        try:
+            plan, created = await planning.generate(assessment_id, data)
+        except PlanningError as exc:
+            raise HTTPException(exc.status_code, {"message": exc.message, "plan_id": exc.plan_id}) from exc
+        return JSONResponse(plan, status_code=201 if created else 200)
 
     @app.post("/api/v1/assessments/{assessment_id}/actions", status_code=201, dependencies=auth)
     def propose(assessment_id: str, data: ProposalInput):

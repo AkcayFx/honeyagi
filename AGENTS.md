@@ -18,6 +18,6 @@ Use Python 3.12+, FastAPI, Pydantic, SQLite, HTTPX, plain responsive HTML/CSS/JS
 
 ## Next milestone
 
-Read `docs/ROADMAP.md`. Add a deterministic fake planner and its provider interface first. Its output must create ordinary pending proposals through the same validation path. Test malformed output and prompt injection before adding a live OpenAI/Anthropic adapter. Do not change policy or enable new scanning tools just to make a model response succeed.
+Read `docs/ROADMAP.md` and `docs/DAY_2.md`. The deterministic fake planner, typed provider interface, provenance and output-denial tests are implemented. Next add one live provider without changing the orchestration boundary. Its output must create ordinary pending proposals through the same validation path. Do not change policy or enable new scanning tools just to make a model response succeed. Keep the local provider honestly labelled rule-based until live AI is configured and tested. The day-two suite has 96 tests.
 
 If asked to make commits, make small truthful commits after functional changes. Do not fabricate progress, backdate commits, or push to an unknown repository.

@@ -11,6 +11,7 @@ class Settings:
     demo_origin: str = "http://127.0.0.1:8001"
     dashboard_origins: tuple[str, ...] = ("http://127.0.0.1:8000", "http://localhost:8000")
     tool_timeout: float = 5.0
+    planner_timeout: float = 8.0
 
     def __post_init__(self):
         if len(self.token) < 24:
