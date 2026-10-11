@@ -1,5 +1,7 @@
 # Implementation roadmap
 
+For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The next task is day 3: the first live LLM provider. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
+
 ## Milestone 1 — delivered
 
 Controlled execution, strict scope, operator decisions, real header adapter, local demo, dashboard, SQLite storage, evidence, retesting, reports, and tests.
