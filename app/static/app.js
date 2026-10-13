@@ -26,7 +26,9 @@ function control(label, className, work) { const b=node('button',label,className
 function renderPlans() {
   $('planner-panel').hidden=false;
   const info=state.plannerInfo;
-  $('planner-badge').textContent=info?.live_ai?'AI · '+info.provider:'RULE-BASED · OFFLINE';
+  $('planner-badge').textContent=info?.live_ai?'AI · '+info.model:'RULE-BASED · OFFLINE';
+  $('planner-help').textContent=info?.live_ai?'Your goal and scoped check list are sent to the configured model. It proposes header checks; review and approve each proposal before running it.':'The offline baseline planner proposes header checks for unchecked URLs in scope. Review and approve each proposal before running it.';
+  $('planner-footer').textContent=info?.live_ai?'LLM planner configured · '+info.model:'Rule-based planning · no model requests';
   const list=$('plan-list'); list.replaceChildren();
   const plans=state.assessment.plans||[];
   if(!plans.length)return;
@@ -105,7 +107,7 @@ $('plan-form').onsubmit=e=>{e.preventDefault();task(async()=>{
   if(!goal)throw new Error('Describe your assessment goal first.');
   // Retain the key after a lost response so retrying cannot duplicate a successful plan.
   if(!state.planRequest||state.planRequest.assessment!==state.selected||state.planRequest.goal!==goal)state.planRequest={assessment:state.selected,goal,key:crypto.randomUUID()};
-  notify('Generating a local baseline plan…');
+  notify(state.plannerInfo?.live_ai?'Requesting a plan from the configured model…':'Generating a local baseline plan…');
   let plan;
   try { plan=await api('/assessments/'+state.selected+'/plans','POST',{goal,request_id:state.planRequest.key}); }
   catch(error) { if(error.status){state.planRequest=null;await refresh();} throw error; }

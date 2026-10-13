@@ -18,6 +18,6 @@ Use Python 3.12+, FastAPI, Pydantic, SQLite, HTTPX, plain responsive HTML/CSS/JS
 
 ## Next milestone
 
-Read `docs/ROADMAP.md` and `docs/DAY_2.md`. The deterministic fake planner, typed provider interface, provenance and output-denial tests are implemented. Next add one live provider without changing the orchestration boundary. Its output must create ordinary pending proposals through the same validation path. Do not change policy or enable new scanning tools just to make a model response succeed. Keep the local provider honestly labelled rule-based until live AI is configured and tested. The day-two suite has 96 tests.
+Read `docs/ROADMAP.md` and `docs/DAY_2.md`. The deterministic fake planner, typed provider interface, provenance and output-denial tests are implemented. Day 3 adds the OpenAI-compatible adapter in `app/providers.py`. Its output creates ordinary pending proposals through the same validation path. Read `docs/DAY_3.md` and `docs/PROVIDER_SETUP.md`. Next verify a real model call with locally configured credentials; mock transport success does not complete live verification. Do not change policy or enable new scanning tools just to make a model response succeed. Keep the offline provider labelled rule-based, and distinguish configured LLM mode from successful live verification. The suite has 172 tests. Do not claim a live model ran until it is demonstrated.
 
 If asked to make commits, make small truthful commits after functional changes. Do not fabricate progress, backdate commits, or push to an unknown repository.

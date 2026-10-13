@@ -11,8 +11,9 @@ Day numbers describe development sessions, not deadlines. Aim for one useful inc
 ## Current progress
 
 - [x] **Day 1:** assessment dashboard, exact lab scope, approval/execution workflow, header checker, evidence, audit, retests and JSON reports. Pushed to GitHub.
-- [x] **Day 2:** typed planner interface, deterministic offline provider, planning UI, provenance, replay protection and adversarial validation. **96 tests pass.** Local commit `0a27b15422cc0f86eeb5120e201532adade11217`; push is pending.
-- [ ] **Next: Day 3 — implement the first real LLM provider.**
+- [x] **Day 2:** typed planner interface, deterministic offline provider, planning UI, provenance, replay protection and adversarial validation. **96 tests pass.** Commit `0a27b15422cc0f86eeb5120e201532adade11217`; pushed October 12, 2026.
+- [x] **Day 3 (October 13, 2026):** configurable OpenAI-compatible adapter, explicit model/credentials, bounded requests, honest failures, mode-aware UI and 76 additional tests. **172 tests pass.** Provider responses were mocked; the local demo workflow used real HTTP. See [DAY_3.md](DAY_3.md).
+- [ ] **Next: Day 4 — verify one real model plan with locally configured credentials.** Error-path checks are implemented; successful live verification is still pending.
 
 ## Days 3–7: real AI and the assessment loop
 

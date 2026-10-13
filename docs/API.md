@@ -7,7 +7,7 @@ Base: `http://127.0.0.1:8000/api/v1`. All API endpoints require `Authorization: 
 | GET | `/assessments` | List assessments |
 | POST | `/assessments` | Create immutable scope |
 | GET | `/assessments/{id}` | Assessment and action queue |
-| GET | `/planner` | Provider identity and whether live AI is available |
+| GET | `/planner` | Provider identity and the configured planning mode (not a successful-live-call claim) |
 | POST | `/assessments/{id}/plans` | Generate a validated plan with pending proposals |
 | POST | `/assessments/{id}/actions` | Create a pending proposal |
 | POST | `/actions/{id}/approve` | Approve a pending action |
@@ -29,7 +29,7 @@ import httpx
 token = getpass.getpass("Token from server terminal: ")
 with httpx.Client(base_url="http://127.0.0.1:8000/api/v1",
                   headers={"Authorization": f"Bearer {token}"},
-                  trust_env=False, timeout=10) as client:
+                  trust_env=False, timeout=35) as client:
     def post(path, data):
         response = client.post(path, json=data)
         response.raise_for_status()
@@ -75,3 +75,16 @@ Responses contain `id`, `assessment_id`, `goal`, `provider`, `model`, `status`, 
 Planning adds 502 for invalid/duplicate provider output, 503 for provider failures or interrupted plans, 504 for the provider deadline, and 429 for planner concurrency limits. Policy escapes return 403; stale proposals return 409. Error details have `{ "message": "...", "plan_id": "..." }`. Raw provider output and exceptions are never included.
 
 Assessment responses now include `plans`. JSON reports use `schema_version: 2`, add all plan records, and include `integrity.plan_hashes_valid`. This flag checks plan metadata and linked proposal fields against their completion audit events. A report's local hashes still do not prevent whole-database rewriting by its owner.
+
+## Day-three provider mode and errors
+
+`GET /planner` returns `provider`, `model`, `mode`, `live_ai`, `allowed_tools` and `requires_approval`.
+Offline mode is `rule_based` / `live_ai: false`; the configured OpenAI-compatible adapter is `llm` / `live_ai: true`.
+These fields identify adapter configuration, not provider reachability or successful generation. Keys and base URLs are not exposed.
+
+The deadline is now configurable, default 30 seconds. Set an API client timeout slightly above your chosen planner deadline.
+New trusted failure codes are `provider_auth` (503), `provider_rate_limited` (429), `provider_response` (502),
+`provider_refused` (502), and `provider_input` (422). Existing `provider_failed` and `timeout` remain 503 and 504.
+A goal containing a known configured credential returns 422 before any plan is stored. Schema and scope denials remain unchanged.
+The API never accepts provider configuration, credentials, a model-selected endpoint or an approval instruction in planning requests.
+See [provider setup](PROVIDER_SETUP.md).

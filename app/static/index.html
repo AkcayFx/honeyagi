@@ -11,7 +11,7 @@
     <div class="workspace-label">YOUR WORKSPACE</div>
     <button class="nav active" id="overview-nav">◈ &nbsp; Assessments</button>
     <a class="nav" href="#audit-section">☷ &nbsp; Audit trail</a>
-    <div class="sidebar-bottom"><span class="online-dot"></span> Local lab <span class="version">v0.2</span><p>Planning and controlled execution<br>Thesis · day 02</p></div>
+    <div class="sidebar-bottom"><span class="online-dot"></span> Local lab <span class="version">v0.3</span><p>Planning and controlled execution<br>Thesis · day 03</p></div>
   </aside>
   <main>
     <header class="topbar"><span>Workspace <span class="muted">/</span> Assessments</span><span class="lab-badge">LOOPBACK DEMO</span></header>
@@ -33,7 +33,7 @@
       <section class="panel actions-panel"><div class="section-heading"><div><h2 id="selected-name">Action queue</h2><p id="selected-scope">Select an assessment to get started.</p></div><button id="export-button" class="secondary" hidden>↓ JSON report</button></div>
         <section id="planner-panel" class="planner-panel" hidden>
           <div class="planner-heading"><h3>Plan an assessment</h3><span id="planner-badge" class="subtle-pill">RULE-BASED · OFFLINE</span></div>
-          <p class="planner-help">Describe your goal. The local baseline planner proposes header checks for unchecked URLs in your scope. Review and approve each proposal before running it.</p>
+          <p id="planner-help" class="planner-help">Describe your goal. The local baseline planner proposes header checks for unchecked URLs in your scope. Review and approve each proposal before running it.</p>
           <form id="plan-form"><label for="plan-goal">Assessment goal</label><textarea id="plan-goal" maxlength="1000" rows="3" required>Review HTTP security headers on all allowed targets.</textarea><button class="primary">Generate plan</button></form>
           <div id="plan-list" aria-live="polite"></div>
         </section>
@@ -43,6 +43,6 @@
     </div>
     <section id="evidence-section" class="panel evidence-panel" hidden><div class="section-heading"><div><div class="eyebrow">CAPTURED OUTPUT</div><h2 id="evidence-title">Evidence</h2></div><button id="close-evidence" class="quiet">Close</button></div><p id="evidence-description"></p><div id="findings"></div><details><summary>Inspect captured evidence and SHA-256</summary><pre id="evidence-json"></pre></details></section>
     <section id="audit-section" class="panel audit-panel"><div class="section-heading"><div><h2>Audit trail</h2><p>Proposals, decisions, and execution events in order.</p></div><span id="integrity" class="subtle-pill">NO EVENTS</span></div><div id="audit-list" class="muted audit-empty">Your assessment activity will appear here.</div></section>
-    <footer><span><span class="online-dot"></span> Human-controlled execution</span><span>Rule-based planning available · live AI provider is the next step</span></footer>
+    <footer><span><span class="online-dot"></span> Human-controlled execution</span><span id="planner-footer">Connect to see the configured planner</span></footer>
   </main>
 </body></html>

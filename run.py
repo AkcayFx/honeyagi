@@ -1,4 +1,4 @@
-"""Run both local services without a shell, remote targets, or external credentials."""
+"""Run the loopback lab; live planning is opt-in through explicit configuration."""
 import os
 from pathlib import Path
 import socket

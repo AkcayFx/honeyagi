@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The next task is day 3: the first live LLM provider. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
+For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter is implemented and mock-tested; the next task is Day 4: successful live-model verification. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
 
 ## Milestone 1 — delivered
 
@@ -8,7 +8,7 @@ Controlled execution, strict scope, operator decisions, real header adapter, loc
 
 ## Milestone 2 — AI proposes, operator decides
 
-Day 2 completes the typed provider interface, deterministic fake provider, pending-proposal generation, dashboard planning workflow, provenance/report integration, and adversarial validation tests. No live LLM adapter is implemented yet.
+Day 2 completes the typed provider interface, deterministic fake provider, pending-proposal generation, dashboard planning workflow, provenance/report integration, and adversarial validation tests. Day 3 adds an explicitly configured OpenAI-compatible adapter, bounded transport, provider error handling and tests. See [PROVIDER_SETUP.md](PROVIDER_SETUP.md). A successful real model call is not yet verified.
 
 1. Define `Planner` and `PlanRequest`/`PlanResponse` schemas. A plan consists of rationale plus proposed allowlisted actions; it has no approval or execution fields.
 2. Build a deterministic fake provider for repeatable tests and an explicit “Generate plan” dashboard action.
@@ -28,4 +28,4 @@ Compare manual planning, deterministic planning, and LLM planning on the same fi
 
 ## Meaningful commits
 
-Day-two commit: `feat: add validated assessment planning and provenance`. Suggested next commits: `feat: integrate one live planner provider`, `test: evaluate live planner failures and prompt injection`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. The repository is `AkcayFx/honeyagi`. Day-two changes are prepared locally; push only when requested.
+Day-two commit: `feat: add validated assessment planning and provenance`. Day-three commit: `feat: add configurable live LLM planner`. Suggested next commits: `test: verify a real planner workflow`, `feat: add bounded evidence context for planning`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. The repository is `AkcayFx/honeyagi`. Day-two changes were pushed October 12, 2026. Push new work when requested; do not fabricate daily activity.

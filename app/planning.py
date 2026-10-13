@@ -63,12 +63,24 @@ class FakePlanner:
             for target in targets]})
 
 
+class ProviderError(Exception):
+    """A trusted adapter error code; never retain upstream messages or credentials."""
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
 class PlanningError(Exception):
     def __init__(self, status_code, message, plan_id=None):
         self.status_code, self.message, self.plan_id = status_code, message, plan_id
 
 
 ERRORS = {
+    "provider_input": (422, "Planning context exceeds limits or contains a configured secret; no provider request was sent"),
+    "provider_auth": (503, "Planner authentication failed; check local provider credentials"),
+    "provider_rate_limited": (429, "Planner rate limit reached; try a new planning request later"),
+    "provider_response": (502, "Planner returned an invalid or incomplete response; no actions were created"),
+    "provider_refused": (502, "Planner declined this request; no actions were created"),
     "schema_denied": (502, "Planner output failed schema validation; no actions were created"),
     "scope_denied": (403, "Planner proposed an out-of-scope action; no actions were created"),
     "duplicate_denied": (502, "Planner returned duplicate checks; no actions were created"),
@@ -112,6 +124,10 @@ class PlanningService:
     async def generate(self, assessment_id, request):
         from .db import PlanningBusy, PlanConflict, PlanStale
         plan_id = str(request.request_id)
+        protected = (self.settings.token, self.settings.planner_api_key)
+        if any(secret and secret in request.goal for secret in protected):
+            # Reject before begin_plan so accidentally pasted credentials are not persisted.
+            raise PlanningError(422, "The assessment goal must not contain configured credentials")
         try:
             record, created = self.store.begin_plan(plan_id, assessment_id, request.goal, self.info.model_dump())
         except PlanningBusy as exc:
@@ -146,6 +162,8 @@ class PlanningService:
                 return self._deny(plan_id, "scope_denied")
         except PlanningError:
             raise
+        except ProviderError as exc:
+            return self._deny(plan_id, exc.code, status="failed")
         except TimeoutError:
             return self._deny(plan_id, "timeout", status="failed")
         except asyncio.CancelledError:

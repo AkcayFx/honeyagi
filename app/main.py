@@ -11,7 +11,8 @@ from .db import Store, digest, ExecutionBusy
 from .models import AssessmentInput, ProposalInput, DecisionInput
 from .policy import PolicyError, validate_target, validate_action
 from .tools import HeaderChecker, compare
-from .planning import FakePlanner, PlanningService, PlanInput, PlanningError
+from .planning import PlanningService, PlanInput, PlanningError
+from .providers import build_planner
 
 
 STATIC = Path(__file__).parent / "static"
@@ -21,7 +22,8 @@ def create_app(settings=None, checker=None, planner=None):
     settings = settings or Settings()
     store = Store(settings.db_path)
     checker = checker or HeaderChecker(settings.tool_timeout)
-    planning = PlanningService(store, planner or FakePlanner(), settings)
+    provider = planner if planner is not None else build_planner(settings)
+    planning = PlanningService(store, provider, settings)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -29,7 +31,7 @@ def create_app(settings=None, checker=None, planner=None):
         print(f"\nDashboard: http://127.0.0.1:8000\nAccess token: {settings.token}\n", flush=True)
         yield
 
-    app = FastAPI(title="HoneyAGI", version="0.2.0", lifespan=lifespan,
+    app = FastAPI(title="HoneyAGI", version="0.3.0", lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.settings = store, settings
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
@@ -86,11 +88,12 @@ def create_app(settings=None, checker=None, planner=None):
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "version": "0.2.0"}
+        return {"status": "ok", "version": "0.3.0"}
 
     @app.get("/api/v1/planner", dependencies=auth)
     def planner_info():
-        return {**planning.info.model_dump(), "mode": "rule_based", "live_ai": False,
+        return {**planning.info.model_dump(), "mode": getattr(provider, "mode", "rule_based"),
+                "live_ai": getattr(provider, "mode", "rule_based") == "llm",
                 "allowed_tools": ["http_headers"], "requires_approval": True}
 
     @app.get("/api/v1/assessments", dependencies=auth)
