@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter is implemented and mock-tested; the next task is Day 4: successful live-model verification. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
+For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter and October 14 verification command are implemented and tested; Day 4 still requires successful real-model verification. See [DAY_4.md](DAY_4.md). The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
 
 ## Milestone 1 — delivered
 

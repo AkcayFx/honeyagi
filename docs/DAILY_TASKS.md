@@ -13,7 +13,8 @@ Day numbers describe development sessions, not deadlines. Aim for one useful inc
 - [x] **Day 1:** assessment dashboard, exact lab scope, approval/execution workflow, header checker, evidence, audit, retests and JSON reports. Pushed to GitHub.
 - [x] **Day 2:** typed planner interface, deterministic offline provider, planning UI, provenance, replay protection and adversarial validation. **96 tests pass.** Commit `0a27b15422cc0f86eeb5120e201532adade11217`; pushed October 12, 2026.
 - [x] **Day 3 (October 13, 2026):** configurable OpenAI-compatible adapter, explicit model/credentials, bounded requests, honest failures, mode-aware UI and 76 additional tests. **172 tests pass.** Provider responses were mocked; the local demo workflow used real HTTP. See [DAY_3.md](DAY_3.md).
-- [ ] **Next: Day 4 — verify one real model plan with locally configured credentials.** Error-path checks are implemented; successful live verification is still pending.
+- [ ] **Day 4 live acceptance — still pending.** October 14 delivers the repeatable verification command, hidden key input, redacted results, decoded-credential protection and 28 additional cases: **200 tests pass**. The actual command correctly reports offline/unconfigured mode; no real model/key was available. See [DAY_4.md](DAY_4.md).
+- **Next action:** run `python -m app.verify_planner --interactive` locally with a real provider/model. Proceed to bounded evidence summaries after live verification passes.
 
 ## Days 3–7: real AI and the assessment loop
 
@@ -108,4 +109,4 @@ Open issues:
 Next task:
 ```
 
-Keep local and pushed status distinct. The current day-two code is committed locally and has not yet been pushed; this checklist does not perform or schedule automatic pushes.
+Keep local and pushed status distinct. Day-two, checklist and Day-three commits were pushed on October 12–13. This checklist does not perform or schedule automatic pushes. Record new pushes in the Git history and session notes.

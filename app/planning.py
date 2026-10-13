@@ -154,6 +154,11 @@ class PlanningService:
                 return self._deny(plan_id, "duplicate_denied")
             except (ValueError, ValidationError, TypeError, RecursionError):
                 return self._deny(plan_id, "schema_denied")
+            # Inspect decoded schema fields too: JSON Unicode escapes can hide a
+            # credential from a raw-response scan while still decoding into stored text.
+            output_text = [output.summary, *(a.rationale for a in output.actions)]
+            if any(secret and secret in value for secret in protected for value in output_text):
+                return self._deny(plan_id, "provider_response", status="failed")
             try:
                 return self.store.complete_plan(plan_id, output, self.settings.demo_origin), True
             except PlanStale:

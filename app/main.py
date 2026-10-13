@@ -18,7 +18,7 @@ from .providers import build_planner
 STATIC = Path(__file__).parent / "static"
 
 
-def create_app(settings=None, checker=None, planner=None):
+def create_app(settings=None, checker=None, planner=None, *, announce_token=True):
     settings = settings or Settings()
     store = Store(settings.db_path)
     checker = checker or HeaderChecker(settings.tool_timeout)
@@ -28,7 +28,8 @@ def create_app(settings=None, checker=None, planner=None):
     @asynccontextmanager
     async def lifespan(app):
         store.initialize()
-        print(f"\nDashboard: http://127.0.0.1:8000\nAccess token: {settings.token}\n", flush=True)
+        if announce_token:
+            print(f"\nDashboard: http://127.0.0.1:8000\nAccess token: {settings.token}\n", flush=True)
         yield
 
     app = FastAPI(title="HoneyAGI", version="0.3.0", lifespan=lifespan,

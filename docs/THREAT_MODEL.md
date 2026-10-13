@@ -63,3 +63,18 @@ The existing policy and all-or-nothing transactional insertion own authorization
 
 No successful live call is claimed in Day 3 validation. Mocked transport tests exercise these boundaries; Day 4 adds verification with real configured credentials.
 Container isolation, broader scanner tools and evidence-aware adaptive planning remain separate future work.
+
+## October 14 verification tooling
+
+The verification command uses the existing app lifecycle/API in-process, with a disposable database and fresh temporary token.
+Token announcement is disabled only for this verification app. Normal dashboard startup continues to print its local access token.
+The command never approves an action and substitutes a rejecting tool adapter, so a boundary regression does not result in a real assessment request.
+One configured provider request may be sent; its bounded goal/scope are fixed and no existing assessment records are read.
+
+Hidden interactive key entry is permitted only in a local terminal; unsafe echo fallback is rejected.
+Keys are not CLI arguments or written to environment/config files. Unique result files omit raw model prose, endpoint URLs and credentials.
+Configured credentials are redacted from metadata. Result files are local observations, not signed attestations.
+Injected test providers are labelled simulated; the operator must not present canned upstream output as real-model evidence.
+
+Decoded plan summaries and rationales are checked for known configured secrets before persistence.
+This closes a JSON-escape bypass in the earlier raw-response check, while remaining a known-secret check rather than general secret discovery.

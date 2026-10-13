@@ -86,12 +86,49 @@ Failures are stored using trusted reason codes, without raw provider errors or r
 
 Provider code and the host remain trusted application code. This is not a container sandbox. Operator approval and explicit execution are still separate requests, and only the existing bundled header-check demo is assessable.
 
-## Next live verification
+## Repeatable verification command (October 14)
 
-1. Configure your chosen provider/model locally and start the lab.
-2. Generate one real plan for a fresh assessment and inspect its provenance and pending proposals.
-3. Confirm no check runs until you approve and execute it.
-4. Record the provider/model, observed result, timing, and any denial/failure without recording the key.
-5. Mark Day 4 complete only after a real model request succeeds; mocks do not satisfy that acceptance check.
+With the project installed, run:
+
+```powershell
+.venv\Scripts\python.exe -m app.verify_planner --interactive
+```
+
+The command asks for the model ID when missing, then uses hidden key input for a remote provider when no key is configured.
+Interactive mode explicitly selects `openai_compatible`; existing base URL, format, budget and timeout settings still apply.
+It refuses interactive entry without a suitable local terminal. The entered key stays in memory and is not saved or added to environment variables.
+The keyless loopback configuration above is supported without a key prompt.
+
+If all settings are already in the environment:
+
+```powershell
+.venv\Scripts\python.exe -m app.verify_planner
+```
+
+Offline or invalid configuration produces an explicit non-success result rather than calling a fake planner.
+Each run prints a redacted JSON result and saves a unique file under `data/planner-verifications/`.
+Use `--output-dir PATH` to choose another report directory. Reports contain configured provider/model, timing, trusted failure codes,
+check flags, proposal count and a plan hash. They omit provider keys, dashboard tokens, raw model prose and endpoint URLs.
+Earlier results are never overwritten. These runtime files are ignored by Git.
+
+The command creates a disposable local database and temporary token, sends one bounded planning request, and verifies the existing API boundaries.
+It checks that at least one useful scoped proposal remains pending, unauthorized approval and unapproved execution are denied,
+same-request replay is idempotent, and report hashes verify. The guard adapter rejects all execution attempts: no scanner runs,
+no assessment target is contacted, and no existing operator database is modified. A running dashboard/demo is unnecessary.
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Configured-endpoint workflow passed and the report was saved |
+| 1 | Planning or a verification check failed |
+| 2 | Not configured, invalid configuration, unavailable interactive input, or interruption |
+| 3 | Result could not be saved; the result is still printed |
+
+Injected test providers are labelled `simulated` and cannot set `live_verified: true`.
+A configured-endpoint pass means the selected endpoint returned a valid plan and these controls passed; it is not proof of model quality,
+successful scanning or the true identity of an upstream model. Do not count a canned endpoint fixture as successful real-model verification.
+
+Development Day 4 remains open until one real configured model request succeeds. Keep that result locally and document the provider/model,
+observed outcome and limitations without the key. As of October 14, no live provider credential was available here.
+See [DAY_4.md](DAY_4.md).
 
 Official contract references: [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) and [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).

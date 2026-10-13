@@ -20,3 +20,14 @@ The execution environment restricted pytest-created directories with owner-only 
 - No live provider credential was configured. Mock success does not establish successful real-model planning.
 - The smoke database stays outside tracked source; temporary services shut down after validation.
 - See [DAY_3.md](DAY_3.md) and [PROVIDER_SETUP.md](PROVIDER_SETUP.md).
+
+## October 14 — Day 4 tooling; live acceptance pending
+
+- 200 pytest cases pass, including 28 new verification/credential cases.
+- The verification CLI preserves an existing operator database, never announces its temporary token, rejects unauthorized approval/execution, and replays without a second provider request.
+- Both mocked transport and a real loopback HTTP fixture return simulated outcomes; neither establishes a successful real-model call.
+- The actual CLI, run with current settings, saves `not_configured`, exits 2, records `live_verified: false` and makes no model/tool request.
+- Regression cases show Unicode-escaped configured credentials in summaries/rationales are denied before storage.
+- The real API/demo smoke still passes with mocked model transport, expected 3/0 header observations and valid report hashes.
+- No planner API key/model was configured. A successful real-model call remains an explicit open acceptance check.
+- The managed Windows run uses the same process-local temporary-directory permission adjustment as earlier sessions.

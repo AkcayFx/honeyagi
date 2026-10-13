@@ -1,4 +1,4 @@
-# HoneyAGI — day 3 (v0.3)
+# HoneyAGI (v0.3)
 
 Working foundation for **Design and Implementation of an AI-Assisted Security Assessment Platform with Controlled Tool Execution**.
 
@@ -6,9 +6,25 @@ This version creates scoped assessments, proposes a real HTTP header check, requ
 
 **Current scope:** one local operator, one server process, the bundled loopback demo, and either an offline rule-based planner or a configured OpenAI-compatible LLM planner. Offline mode is the default and needs no API key. Remote live planning requires a locally configured provider key. General-purpose scanner workers remain later work.
 
-Day 3 adds the live adapter, explicit configuration, bounded requests, honest provider failures and mode-aware dashboard labels. **172 tests pass.** The adapter has been verified with mocked provider responses and the real local demo; successful live-model verification remains pending because no provider API key was configured. See [provider setup](docs/PROVIDER_SETUP.md) and [day-three notes](docs/DAY_3.md).
+Day 3 adds the live adapter, explicit configuration, bounded requests, honest provider failures and mode-aware dashboard labels. **200 tests pass.** The adapter has been verified with mocked provider responses and the real local demo; successful live-model verification remains pending because no provider API key was configured. See [provider setup](docs/PROVIDER_SETUP.md) and [day-three notes](docs/DAY_3.md).
 
 Day 2 adds a typed planner interface, bounded/schema-checked planner output, persisted goals and provenance, transactional pending proposals, request replay protection, and a **Generate plan** dashboard workflow. Existing databases are upgraded without deleting day-one assessments, evidence, or audit records. See [day-two implementation notes](docs/DAY_2.md).
+
+## October 14 progress
+
+A repeatable planner verification command now checks pending proposals, approval denials, request replay and report integrity in a disposable database.
+It saves redacted results and supports hidden local key entry. JSON-escaped credentials are also rejected before plan storage.
+The new tooling is tested; **development Day 4 live-model verification is still pending** because no model/key was configured here.
+See [Day 4 notes](docs/DAY_4.md).
+
+After installing the project below, run:
+
+```powershell
+.venv\Scripts\python.exe -m app.verify_planner --interactive
+```
+
+Enter the model ID and key privately in your terminal. No dashboard/demo needs to be running, no tool is executed, and existing assessments are unchanged.
+See [provider setup](docs/PROVIDER_SETUP.md) for compatible endpoints and result/exit-code meanings.
 
 ## Run locally
 
@@ -41,7 +57,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-172 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, concurrent request replay, mid-generation scope changes, database migration, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
+200 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
 
 ## Project map
 
@@ -55,6 +71,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 | `app/planning.py` | Planner protocol, fake provider, output validation and orchestration |
 | `app/providers.py` | Bounded OpenAI-compatible adapter and explicit provider selection |
 | `app/config.py` | Database path, token, fixed local boundaries and planner settings |
+| `app/verify_planner.py` | Disposable planning verification and redacted JSON results |
 | `app/static/` | Responsive HTML/CSS/JavaScript dashboard |
 | `app/demo.py` | Missing-header, configured-header, and redirect targets |
 | `run.py` | Start and stop both local services |
