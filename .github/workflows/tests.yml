@@ -1,0 +1,74 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python 3.12 on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      SAP_PLANNER_PROVIDER: fake
+      SAP_PLANNER_MODEL: ""
+      SAP_PLANNER_API_KEY: ""
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and test dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Check Python syntax
+        run: python -m compileall -q app
+
+      - name: Check dashboard JavaScript syntax
+        run: node --check app/static/app.js
+
+      - name: Run regression tests
+        run: python -m pytest -q
+
+      - name: Verify offline CLI behavior
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          completed = subprocess.run(
+              [sys.executable, "-m", "app.verify_planner"],
+              capture_output=True,
+              text=True,
+              check=False,
+          )
+          assert completed.returncode == 2, "Offline verification must not claim success"
+          result = json.loads(completed.stdout)
+          assert result["status"] == "not_configured"
+          assert result["live_verified"] is False
+          assert result["tool_calls"] == 0
+          saved = Path("data/planner-verifications") / (result["run_id"] + ".json")
+          assert json.loads(saved.read_text(encoding="utf-8")) == result
