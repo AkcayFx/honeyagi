@@ -59,6 +59,18 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 
 200 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
 
+## Automated checks
+
+GitHub Actions runs the regression suite on Windows and Linux with Python 3.12
+for pushes to `main`, pull requests, and manual runs. It also checks Python and
+dashboard JavaScript syntax, records the tested revision, and verifies that the
+offline planner CLI reports its unconfigured state accurately.
+
+The workflow uses read-only repository permissions and pinned action revisions.
+Model keys are not required; provider responses in tests remain simulated.
+See the [test runs](https://github.com/AkcayFx/honeyagi/actions/workflows/tests.yml).
+These checks do not complete the pending real-model verification.
+
 ## Project map
 
 | Path | Responsibility |
