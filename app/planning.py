@@ -7,11 +7,13 @@ from uuid import UUID, uuid4
 from pydantic import Field, ValidationError, field_validator
 from .models import StrictModel, ProposalInput
 from .policy import PolicyError, validate_action
+from .evidence import EvidenceContext, EvidenceContextError
 
 
 class PlanInput(StrictModel):
     goal: str = Field(min_length=1, max_length=1000)
     request_id: UUID = Field(default_factory=uuid4)
+    include_evidence: bool = Field(default=False, strict=True)
 
     @field_validator("goal")
     @classmethod
@@ -33,11 +35,12 @@ class PlannerInfo(StrictModel):
 
 @dataclass(frozen=True)
 class PlanningContext:
-    """Only purpose and immutable scope: no token, database, HTTP client or raw evidence."""
+    """Immutable scope and optional sanitized observations; no credentials or raw evidence."""
     goal: str
     targets: tuple[str, ...]
     existing_checks: tuple[tuple[str, str], ...]
     allowed_tools: tuple[str, ...] = ("http_headers",)
+    evidence_context: EvidenceContext | None = None
 
 
 class Planner(Protocol):
@@ -129,11 +132,15 @@ class PlanningService:
             # Reject before begin_plan so accidentally pasted credentials are not persisted.
             raise PlanningError(422, "The assessment goal must not contain configured credentials")
         try:
-            record, created = self.store.begin_plan(plan_id, assessment_id, request.goal, self.info.model_dump())
+            record, created = self.store.begin_plan(
+                plan_id, assessment_id, request.goal, self.info.model_dump(),
+                include_evidence=request.include_evidence, demo_origin=self.settings.demo_origin)
+        except EvidenceContextError as exc:
+            raise PlanningError(409, "Evidence integrity check failed; no provider request was sent") from exc
         except PlanningBusy as exc:
             raise PlanningError(429, "A plan is already running for this assessment, or two planners are busy") from exc
         except PlanConflict as exc:
-            raise PlanningError(409, "Request ID is already associated with another goal or assessment") from exc
+            raise PlanningError(409, "Request ID is already associated with another goal, assessment or evidence option") from exc
         if not created:
             if record["status"] == "running":
                 raise PlanningError(409, "This planning request is still running", plan_id)
@@ -143,7 +150,9 @@ class PlanningService:
         assessment = self.store.get_assessment(assessment_id)
         existing = self.store.list_actions(assessment_id)
         context = PlanningContext(request.goal, tuple(assessment["targets"]),
-                                  tuple((a["tool"], a["target"]) for a in existing))
+                                  tuple((a["tool"], a["target"]) for a in existing),
+                                  evidence_context=EvidenceContext.from_dict(record["evidence_context"])
+                                  if "evidence_context" in record else None)
         try:
             raw = await asyncio.wait_for(self.provider.plan(context), self.settings.planner_timeout)
             try:

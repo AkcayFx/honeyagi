@@ -2,6 +2,8 @@ import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
+from dataclasses import asdict
+from .evidence import build_evidence_context, EvidenceContextError
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -91,6 +93,8 @@ class Store:
             # Additive migration preserves all day-one actions and audit entries.
             if "plan_id" not in {r["name"] for r in db.execute("PRAGMA table_info(actions)")}:
                 db.execute("ALTER TABLE actions ADD COLUMN plan_id TEXT REFERENCES plans(id)")
+            if "evidence_context_json" not in {r["name"] for r in db.execute("PRAGMA table_info(plans)")}:
+                db.execute("ALTER TABLE plans ADD COLUMN evidence_context_json TEXT")
         # One process only: a previous process's in-flight request cannot be replayed.
         with self.connection(write=True) as db:
             for row in db.execute("SELECT * FROM actions WHERE status='running'").fetchall():
@@ -172,6 +176,10 @@ class Store:
     @staticmethod
     def plan(db, row):
         result = {**dict(row), "action_ids": json.loads(row["action_ids"])}
+        context_json = result.pop("evidence_context_json", None)
+        # Omit absent context to preserve hashes and replays of pre-migration plans.
+        if context_json is not None:
+            result["evidence_context"] = json.loads(context_json)
         result["proposals"] = [dict(r) for r in db.execute(
             "SELECT id,tool,target,rationale FROM actions WHERE plan_id=? ORDER BY rowid", (row["id"],))]
         return result
@@ -186,8 +194,9 @@ class Store:
             return [self.plan(db, row) for row in db.execute(
                 "SELECT * FROM plans WHERE assessment_id=? ORDER BY rowid DESC", (assessment_id,)).fetchall()]
 
-    def begin_plan(self, plan_id, assessment_id, goal, info):
-        fingerprint = digest({"assessment_id": assessment_id, "goal": goal, **info})
+    def begin_plan(self, plan_id, assessment_id, goal, info, *, include_evidence=False, demo_origin=None):
+        fingerprint = digest({"assessment_id": assessment_id, "goal": goal, **info,
+                              **({"include_evidence": True} if include_evidence else {})})
         with self.connection(write=True) as db:
             existing = db.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
             if existing:
@@ -197,10 +206,21 @@ class Store:
             active = db.execute("SELECT assessment_id FROM plans WHERE status='running'").fetchall()
             if len(active) >= 2 or any(r[0] == assessment_id for r in active):
                 raise PlanningBusy()
-            db.execute("INSERT INTO plans (id,assessment_id,goal,provider,model,fingerprint,status,created_at) VALUES (?,?,?,?,?,?,'running',?)",
-                       (plan_id, assessment_id, goal, info["provider"], info["model"], fingerprint, now()))
+            context = None
+            if include_evidence:
+                # The writer lock prevents evidence changing between snapshot and insert.
+                try:
+                    context = asdict(build_evidence_context(self.report(assessment_id), demo_origin))
+                except (ValueError, TypeError, KeyError, AttributeError, RecursionError) as exc:
+                    raise EvidenceContextError() from exc
+            db.execute("INSERT INTO plans (id,assessment_id,goal,provider,model,fingerprint,status,created_at,evidence_context_json) VALUES (?,?,?,?,?,?,'running',?,?)",
+                       (plan_id, assessment_id, goal, info["provider"], info["model"], fingerprint, now(),
+                        canonical(context) if context is not None else None))
             self.audit(db, assessment_id, "planning_started", None,
-                       {"plan_id": plan_id, **info, "goal_sha256": digest(goal)})
+                       {"plan_id": plan_id, **info, "goal_sha256": digest(goal),
+                        **({"evidence_context_sha256": digest(context),
+                            "evidence_count": len(context["observations"]),
+                            "evidence_omitted_count": context["omitted_count"]} if context is not None else {})})
             row = db.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
             return self.plan(db, row), True
 

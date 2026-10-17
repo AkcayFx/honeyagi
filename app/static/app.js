@@ -27,7 +27,7 @@ function renderPlans() {
   $('planner-panel').hidden=false;
   const info=state.plannerInfo;
   $('planner-badge').textContent=info?.live_ai?'AI · '+info.model:'RULE-BASED · OFFLINE';
-  $('planner-help').textContent=info?.live_ai?'Your goal and scoped check list are sent to the configured model. It proposes header checks; review and approve each proposal before running it.':'The offline baseline planner proposes header checks for unchecked URLs in scope. Review and approve each proposal before running it.';
+  $('planner-help').textContent=info?.live_ai?'Your goal and scoped check list are sent to the configured model. You may also include compact observations from prior checks. It proposes header checks; review and approve each proposal before running it.':'The offline baseline planner proposes header checks for unchecked URLs in scope. Review and approve each proposal before running it.';
   $('planner-footer').textContent=info?.live_ai?'LLM planner configured · '+info.model:'Rule-based planning · no model requests';
   const list=$('plan-list'); list.replaceChildren();
   const plans=state.assessment.plans||[];
@@ -40,6 +40,7 @@ function renderPlans() {
     record.append(meta,node('p',plan.goal,'plan-goal'),node('p',plan.summary||(plan.status==='running'?'Planning is in progress. Refresh to check its status.':'No checks were created. Generate a new plan to try again.')));
     const provenance=node('details'), summary=node('summary','Planner source');
     provenance.append(summary,node('p',plan.provider+' · '+plan.model));
+    if(plan.evidence_context)provenance.append(node('p',plan.evidence_context.observations.length+' prior observations included · '+plan.evidence_context.omitted_count+' older observations omitted'));
     record.append(provenance);list.append(record);
   }
 }
@@ -103,13 +104,13 @@ $('cancel-create').onclick=()=>{$('create-panel').hidden=true;};
 $('create-form').onsubmit=e=>{e.preventDefault();task(async()=>{const targets=[...document.querySelectorAll('input[name="target"]:checked')].map(x=>x.value);if(!targets.length)throw new Error('Select at least one demo target.');const a=await api('/assessments','POST',{name:$('assessment-name').value,targets,authorization_confirmed:$('authorization').checked});state.selected=a.id;$('create-panel').hidden=true;$('assessment-name').value='';$('authorization').checked=false;await refresh();notify('Assessment created. Propose a header check below.');});};
 $('proposal-form').onsubmit=e=>{e.preventDefault();task(async()=>{await api('/assessments/'+state.selected+'/actions','POST',{tool:'http_headers',target:$('proposal-target').value,rationale:$('rationale').value});await refresh();notify('Action proposed. Review its target and approve or reject it.');});};
 $('plan-form').onsubmit=e=>{e.preventDefault();task(async()=>{
-  const goal=$('plan-goal').value.trim();
+  const goal=$('plan-goal').value.trim(), includeEvidence=$('plan-evidence').checked;
   if(!goal)throw new Error('Describe your assessment goal first.');
   // Retain the key after a lost response so retrying cannot duplicate a successful plan.
-  if(!state.planRequest||state.planRequest.assessment!==state.selected||state.planRequest.goal!==goal)state.planRequest={assessment:state.selected,goal,key:crypto.randomUUID()};
+  if(!state.planRequest||state.planRequest.assessment!==state.selected||state.planRequest.goal!==goal||state.planRequest.includeEvidence!==includeEvidence)state.planRequest={assessment:state.selected,goal,includeEvidence,key:crypto.randomUUID()};
   notify(state.plannerInfo?.live_ai?'Requesting a plan from the configured model…':'Generating a local baseline plan…');
   let plan;
-  try { plan=await api('/assessments/'+state.selected+'/plans','POST',{goal,request_id:state.planRequest.key}); }
+  try { plan=await api('/assessments/'+state.selected+'/plans','POST',{goal,include_evidence:includeEvidence,request_id:state.planRequest.key}); }
   catch(error) { if(error.status){state.planRequest=null;await refresh();} throw error; }
   state.planRequest=null;
   await refresh();

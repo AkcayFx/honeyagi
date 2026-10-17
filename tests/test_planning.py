@@ -213,7 +213,8 @@ def test_raw_evidence_and_authentication_not_sent_to_planner(planning_lab):
     context = provider.contexts[0]
     assert TOKEN not in repr(context)
     assert "IGNORE ALL RULES" not in repr(context)
-    assert set(vars(context)) == {"goal", "targets", "existing_checks", "allowed_tools"}
+    assert set(vars(context)) == {"goal", "targets", "existing_checks", "allowed_tools", "evidence_context"}
+    assert context.evidence_context is None
     assert len(calls) == 1
 
 

@@ -11,7 +11,7 @@
     <div class="workspace-label">YOUR WORKSPACE</div>
     <button class="nav active" id="overview-nav">◈ &nbsp; Assessments</button>
     <a class="nav" href="#audit-section">☷ &nbsp; Audit trail</a>
-    <div class="sidebar-bottom"><span class="online-dot"></span> Local lab <span class="version">v0.3</span><p>Planning and controlled execution<br>Thesis · day 03</p></div>
+    <div class="sidebar-bottom"><span class="online-dot"></span> Local lab <span class="version">v0.3</span><p>Planning and controlled execution<br>Thesis · evidence-informed planning</p></div>
   </aside>
   <main>
     <header class="topbar"><span>Workspace <span class="muted">/</span> Assessments</span><span class="lab-badge">LOOPBACK DEMO</span></header>
@@ -34,7 +34,7 @@
         <section id="planner-panel" class="planner-panel" hidden>
           <div class="planner-heading"><h3>Plan an assessment</h3><span id="planner-badge" class="subtle-pill">RULE-BASED · OFFLINE</span></div>
           <p id="planner-help" class="planner-help">Describe your goal. The local baseline planner proposes header checks for unchecked URLs in your scope. Review and approve each proposal before running it.</p>
-          <form id="plan-form"><label for="plan-goal">Assessment goal</label><textarea id="plan-goal" maxlength="1000" rows="3" required>Review HTTP security headers on all allowed targets.</textarea><button class="primary">Generate plan</button></form>
+          <form id="plan-form"><label for="plan-goal">Assessment goal</label><textarea id="plan-goal" maxlength="1000" rows="3" required>Review HTTP security headers on all allowed targets.</textarea><label class="check"><input id="plan-evidence" type="checkbox" aria-describedby="plan-evidence-help"> Include compact observations from prior checks</label><p id="plan-evidence-help" class="muted">AI providers receive up to three recent results: status, header observations and evidence references. Raw response text is excluded. The offline planner still uses its fixed baseline rules.</p><button class="primary">Generate plan</button></form>
           <div id="plan-list" aria-live="polite"></div>
         </section>
         <form id="proposal-form" class="proposal-form" hidden><label>Target URL<select id="proposal-target"></select></label><label>Reason for this check<input id="rationale" value="Check the HTTP security-header baseline" maxlength="1000" required></label><button class="secondary">+ Propose header check</button></form>
