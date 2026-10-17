@@ -35,13 +35,13 @@ For future AI: target output is evidence, never instruction. A planner must retu
 
 ## Day-two planner boundary
 
-The planner interface receives only the bounded operator goal, immutable exact target URLs, names of allowed tools, and existing `(tool, target)` pairs. It receives no operator token, database object, HTTP executor, response headers, or raw evidence. The default provider is deterministic and makes no external requests. The optional Day 3 adapter sends only this selected context to an explicitly configured provider endpoint. Provider code is trusted application code, not a sandbox; an adapter can still import host resources. The interface constrains data/capabilities supplied by orchestration and is not an OS security boundary.
+The planner interface receives only the bounded operator goal, immutable exact target URLs, names of allowed tools, and existing `(tool, target)` pairs. It receives no operator token, database object, HTTP executor, response header values, or raw evidence. October 17 adds optional typed observations described below. The default provider is deterministic and makes no external requests. The optional Day 3 adapter sends only this selected context to an explicitly configured provider endpoint. Provider code is trusted application code, not a sandbox; an adapter can still import host resources. The interface constrains data/capabilities supplied by orchestration and is not an OS security boundary.
 
 Provider responses are untrusted JSON text, limited to 16 KiB, one bounded summary, and at most eight typed header-check proposals. Duplicate JSON keys, unknown tools, extra fields (including approval/execution instructions), duplicate checks, and scope escapes are denied. All actions in a plan must validate before any are inserted. Scope and existing checks are rechecked inside the insertion transaction, so concurrent manual proposals cannot silently create duplicate planned checks.
 
 Each accepted request has a persisted UUID and fingerprint. Same-input retries replay the saved plan; conflicting reuse is rejected. Planning is limited to one in-flight request per assessment and two globally, with a configurable total provider deadline (default 30 seconds, at most 120). Startup recovery marks interrupted plans failed. This async deadline assumes cooperative provider code; it cannot interrupt a provider blocking the event loop with CPU work.
 
-Plan goals, trusted provider/model identifiers, and linked proposals are stored separately from tool evidence. A plan SHA-256 is bound to its completion audit event. Reports verify its metadata and linked proposal fields. Denials/failures record generic reason codes; raw provider payloads and error messages are not persisted. Raw target-output prompt injection is currently excluded by not passing target text to the planner. Future evidence-aware live providers need explicit injection evaluation before adding that input channel.
+Plan goals, trusted provider/model identifiers, and linked proposals are stored separately from tool evidence. A plan SHA-256 is bound to its completion audit event. Reports verify its metadata and linked proposal fields. Denials/failures record generic reason codes; raw provider payloads and error messages are not persisted. Raw target-output prompt injection is excluded by not passing target text to the planner. Optional evidence context uses typed observations with adversarial redaction and policy tests; it does not expose raw header values.
 
 ## Day-three external provider boundary
 
@@ -62,7 +62,7 @@ Only one complete assistant text choice is accepted; refusal, truncation, return
 The existing policy and all-or-nothing transactional insertion own authorization even when upstream strict structured output is enabled.
 
 No successful live call is claimed in Day 3 validation. Mocked transport tests exercise these boundaries; Day 4 adds verification with real configured credentials.
-Container isolation, broader scanner tools and evidence-aware adaptive planning remain separate future work.
+Container isolation, broader scanner tools and an adaptive assessment loop remain separate future work.
 
 ## October 14 verification tooling
 
@@ -78,3 +78,28 @@ Injected test providers are labelled simulated; the operator must not present ca
 
 Decoded plan summaries and rationales are checked for known configured secrets before persistence.
 This closes a JSON-escape bypass in the earlier raw-response check, while remaining a known-secret check rather than general secret discovery.
+
+## October 17 evidence boundary
+
+Evidence context is an explicit, default-off planning input. Only a verified snapshot from the
+same assessment is eligible. The application derives booleans from three bounded allowlisted
+headers and supplies exact scoped targets, status, controlled conclusions and evidence references.
+It does not send raw values, free-text findings or tool errors. Non-2xx observations are unknown.
+Hostile header values containing model instructions or known configured credentials are tested
+against the actual outbound adapter body.
+
+Selection keeps the latest completed result per URL by audit completion order. The model sees at
+most three observations / 4096 bytes, plus a visible count of omitted completed results. The full
+request still has its existing 16 KiB ceiling. Constructing the snapshot reads the existing full
+report under a writer lock; this is not a bound on database size, read memory or lock duration.
+Single-process deployment and database-growth limits still apply.
+
+The exact snapshot is stored in provenance and covered by completed-plan integrity; request
+fingerprints distinguish the opt-in flag. Replays retain the original evidence selection.
+Malformed or tampered report data fails before the provider call. Local hashes do not authenticate
+data against an administrator who can rewrite the database and hashes.
+
+Typed evidence cannot authorize actions. The policy/transaction checks and separate approvals
+remain authoritative. Prompt wording asks the model to use evidence IDs, but narrative citations
+are not yet validated; generated summaries must still be reviewed as untrusted model text.
+No real-model evidence-informed reasoning claim follows from the mocked adapter tests.

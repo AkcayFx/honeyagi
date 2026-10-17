@@ -14,7 +14,8 @@ Day numbers describe development sessions, not deadlines. Aim for one useful inc
 - [x] **Day 2:** typed planner interface, deterministic offline provider, planning UI, provenance, replay protection and adversarial validation. **96 tests pass.** Commit `0a27b15422cc0f86eeb5120e201532adade11217`; pushed October 12, 2026.
 - [x] **Day 3 (October 13, 2026):** configurable OpenAI-compatible adapter, explicit model/credentials, bounded requests, honest failures, mode-aware UI and 76 additional tests. **172 tests pass.** Provider responses were mocked; the local demo workflow used real HTTP. See [DAY_3.md](DAY_3.md).
 - [ ] **Day 4 live acceptance — still pending.** October 14 delivers the repeatable verification command, hidden key input, redacted results, decoded-credential protection and 28 additional cases: **200 tests pass**. The actual command correctly reports offline/unconfigured mode; no real model/key was available. See [DAY_4.md](DAY_4.md).
-- **Next action:** run `python -m app.verify_planner --interactive` locally with a real provider/model. Proceed to bounded evidence summaries after live verification passes.
+- [x] **October 17: Day 5 evidence-context implementation.** Opt-in typed observations, evidence IDs/hashes, bounded selection, replay provenance and additive migration. **230 tests pass on Windows and Linux**, including the real-loopback demo smoke test with simulated provider responses. Real-model evidence-informed acceptance is still open. See [DAY_5.md](DAY_5.md).
+- **Next action:** complete Day 4 with `python -m app.verify_planner --interactive` locally, then evaluate an evidence-informed model request. Day 5 implementation proceeded independently while live acceptance remains open; do not treat that as completion of the real-model milestone.
 
 ## Days 3–7: real AI and the assessment loop
 

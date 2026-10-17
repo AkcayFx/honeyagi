@@ -88,3 +88,21 @@ New trusted failure codes are `provider_auth` (503), `provider_rate_limited` (42
 A goal containing a known configured credential returns 422 before any plan is stored. Schema and scope denials remain unchanged.
 The API never accepts provider configuration, credentials, a model-selected endpoint or an approval instruction in planning requests.
 See [provider setup](PROVIDER_SETUP.md).
+
+## Optional evidence context (October 17)
+
+Add `"include_evidence": true` to the planning request to include compact observations
+from completed checks. The default is false; strings/numbers are rejected. Reusing the UUID
+with a different evidence option returns 409. Identical retries replay the original snapshot.
+
+Opt-in plans contain `evidence_context` with `schema_version: 1`, `observations` and
+`omitted_count`. Up to three latest-per-URL results fit within a 4096-byte budget.
+Each result has `evidence_id` (action UUID), original `sha256`, `target`, `status_code`,
+`conclusion`, `csp_present`, `nosniff_valid`, and `referrer_policy_present`.
+Non-2xx results have an inconclusive conclusion and null booleans. The observations
+describe header presence/exact nosniff matching, not exploitability.
+
+Raw header values and stored free-text findings are excluded. The snapshot is persisted and
+covered by completed-plan integrity. Broken report/evidence integrity returns 409 before
+contacting the provider. No new approval or execution behavior is introduced. Offline baseline
+rules are unchanged. See [DAY_5.md](DAY_5.md) for limits, compatibility and validation.

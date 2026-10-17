@@ -6,7 +6,7 @@ This version creates scoped assessments, proposes a real HTTP header check, requ
 
 **Current scope:** one local operator, one server process, the bundled loopback demo, and either an offline rule-based planner or a configured OpenAI-compatible LLM planner. Offline mode is the default and needs no API key. Remote live planning requires a locally configured provider key. General-purpose scanner workers remain later work.
 
-Day 3 adds the live adapter, explicit configuration, bounded requests, honest provider failures and mode-aware dashboard labels. **200 tests pass.** The adapter has been verified with mocked provider responses and the real local demo; successful live-model verification remains pending because no provider API key was configured. See [provider setup](docs/PROVIDER_SETUP.md) and [day-three notes](docs/DAY_3.md).
+Day 3 adds the live adapter, explicit configuration, bounded requests, honest provider failures and mode-aware dashboard labels. The adapter has been verified with mocked provider responses and the real local demo; successful live-model verification remains pending because no provider API key was configured. See [provider setup](docs/PROVIDER_SETUP.md) and [day-three notes](docs/DAY_3.md).
 
 Day 2 adds a typed planner interface, bounded/schema-checked planner output, persisted goals and provenance, transactional pending proposals, request replay protection, and a **Generate plan** dashboard workflow. Existing databases are upgraded without deleting day-one assessments, evidence, or audit records. See [day-two implementation notes](docs/DAY_2.md).
 
@@ -25,6 +25,16 @@ After installing the project below, run:
 
 Enter the model ID and key privately in your terminal. No dashboard/demo needs to be running, no tool is executed, and existing assessments are unchanged.
 See [provider setup](docs/PROVIDER_SETUP.md) for compatible endpoints and result/exit-code meanings.
+
+## October 17 progress
+
+Planning can now optionally include compact observations from completed checks: evidence IDs/hashes,
+HTTP status and three typed header observations. The dashboard checkbox defaults off. Raw header text
+is excluded, retries preserve the original snapshot, and every new proposal still requires approval.
+This implements the evidence-context foundation; the offline planner keeps its fixed baseline rules.
+**230 tests pass on Windows and Linux**, including 30 new evidence-context cases and a real loopback
+demo smoke test with simulated model responses. See [Day 5 notes](docs/DAY_5.md).
+Real-model verification remains pending.
 
 ## Run locally
 
@@ -57,7 +67,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-200 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
+230 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, bounded evidence selection, immutable context, evidence opt-in/replay, hostile-text exclusion, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
 
 ## Automated checks
 
@@ -81,6 +91,7 @@ These checks do not complete the pending real-model verification.
 | `app/db.py` | SQLite transactions, atomic claims, evidence, hash-linked audit |
 | `app/models.py` | Strict request schemas; additional fields rejected |
 | `app/planning.py` | Planner protocol, fake provider, output validation and orchestration |
+| `app/evidence.py` | Bounded, sanitized evidence observations for optional planning context |
 | `app/providers.py` | Bounded OpenAI-compatible adapter and explicit provider selection |
 | `app/config.py` | Database path, token, fixed local boundaries and planner settings |
 | `app/verify_planner.py` | Disposable planning verification and redacted JSON results |
@@ -131,4 +142,4 @@ The audit is hash-linked and evidence is SHA-256 hashed. Reports verify evidence
 
 See [the API examples](docs/API.md), [threat model](docs/THREAT_MODEL.md), and [roadmap](docs/ROADMAP.md) before extending the project. Official implementation references: [FastAPI lifespan testing](https://fastapi.tiangolo.com/advanced/testing-events/), [HTTPX API](https://www.python-httpx.org/api/), [HTTPX proxy environment handling](https://www.python-httpx.org/environment_variables/).
 
-The offline planner records your goal but supports only a fixed HTTP header baseline. It does not infer arbitrary security procedures from natural language. Generating a plan in either mode never approves or executes its actions. The offline planner skips URLs with any prior check, including rejected or failed ones; use the existing explicit retest flow when appropriate. Exact same-goal request IDs replay a saved result. Changing the goal, assessment, or provider while reusing an ID returns a conflict.
+The offline planner records your goal but supports only a fixed HTTP header baseline. It does not infer arbitrary security procedures from natural language. Generating a plan in either mode never approves or executes its actions. The offline planner skips URLs with any prior check, including rejected or failed ones; use the existing explicit retest flow when appropriate. Exact same-goal request IDs replay a saved result. Changing the goal, assessment, provider or evidence option while reusing an ID returns a conflict.

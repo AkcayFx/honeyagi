@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter and October 14 verification command are implemented and tested; Day 4 still requires successful real-model verification. See [DAY_4.md](DAY_4.md). The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
+For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter and October 14 verification command are implemented and tested; Day 4 still requires successful real-model verification. See [DAY_4.md](DAY_4.md). October 17 adds the optional bounded evidence-context implementation with simulated provider tests; see [DAY_5.md](DAY_5.md). Day 4 real-model acceptance remains open. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
 
 ## Milestone 1 — delivered
 
@@ -28,4 +28,4 @@ Compare manual planning, deterministic planning, and LLM planning on the same fi
 
 ## Meaningful commits
 
-Day-two commit: `feat: add validated assessment planning and provenance`. Day-three commit: `feat: add configurable live LLM planner`. Suggested next commits: `test: verify a real planner workflow`, `feat: add bounded evidence context for planning`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. The repository is `AkcayFx/honeyagi`. Day-two changes were pushed October 12, 2026. Push new work when requested; do not fabricate daily activity.
+Day-two commit: `feat: add validated assessment planning and provenance`. Day-three commit: `feat: add configurable live LLM planner`. Suggested next commits: `test: verify a real planner workflow`, `docs: add lab evaluation protocol`. Commit after a real change and its relevant checks. The repository is `AkcayFx/honeyagi`. Day-two changes were pushed October 12, 2026. Push new work when requested; do not fabricate daily activity.
