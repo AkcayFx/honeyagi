@@ -1,7 +1,9 @@
 # October 19, 2026 — operator-triggered assessment feedback
 
 This session adds the Day 6 feedback foundation and dashboard controls. Commits use their actual
-October 19 timestamps. No work or contribution is recorded as having happened on October 18.
+October 19 timestamps. No development or testing is claimed to have happened on October 18.
+A separately requested retrospective documentation checkpoint is described in
+[the October 18 note](checkpoints/2026-10-18.md), including its actual October 19 recording date.
 
 ## Delivered behavior
 
