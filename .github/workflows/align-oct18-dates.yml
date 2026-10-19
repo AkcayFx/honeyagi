@@ -1,0 +1,102 @@
+name: Align requested October 18 checkpoint dates
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/align-oct18-dates.yml"]
+
+permissions: {}
+
+jobs:
+  record:
+    if: github.repository == 'AkcayFx/honeyagi' && github.ref == 'refs/heads/main' && github.actor == 'AkcayFx' && github.event.before == '3158da2f6414a784c0ffca5faa203ddab5a32d5d'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - name: Record the requested matching dates and inspect calendar
+        shell: python
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHECKPOINT_TEXT: "# October 18 checkpoint — recorded retrospectively\n\nRecorded on October 19, 2026 at the repository owner's request. The follow-up documentation\ncommit uses October 18 for both its Git author and committer dates. Its actual recording\ntime is __RECORDING_TIME__. No development or testing is claimed to have occurred on October 18.\n\nThe original checkpoint commit, 9927e432242758462a24d7442738877998883d59, had an October 18\nauthor date and an October 19 committer date. This follow-up aligns both Git date fields\nwithout rewriting that commit or any project history.\n\n## Observed project checkpoint\n\n- HoneyAGI implements the thesis: Design and Implementation of an AI-Assisted Security\n  Assessment Platform with Controlled Tool Execution.\n- Exact scope remains the three bundled loopback demo URLs and the HTTP header checker.\n- New actions require separate human approval and execution.\n- Compact planning observations reference original evidence IDs and hashes; raw response\n  text is excluded from model context.\n- As observed on October 19, operator-triggered feedback sequences and dashboard controls\n  are implemented. Sequences allow four planning attempts and retain replay provenance.\n- Verified source: 414d9cbeecc32109187a4f868a6601b126cec5d1.\n- Verification observed on October 19: 262 tests passed on Windows and Linux, plus Python\n  and JavaScript syntax checks and the offline planner verification check.\n- Verification run: https://github.com/AkcayFx/honeyagi/actions/runs/39248970031.\n- Provider responses in these tests were simulated. Real-model verification remains pending.\n\n## Next development work\n\n1. Run the isolated planner verification locally with a configured model and private API key.\n2. Evaluate an evidence-informed planning sequence on the same fixed lab.\n3. Add validated evidence citations to generated assessment summaries before treating them as reports.\n"
+        run: |
+          import datetime
+          import json
+          import os
+          import time
+          import urllib.request
+          from html.parser import HTMLParser
+
+          repo = "AkcayFx/honeyagi"
+          api = "https://api.github.com/repos/" + repo
+          source = os.environ["GITHUB_SHA"]
+          parent = "3158da2f6414a784c0ffca5faa203ddab5a32d5d"
+          target_date = "2026-10-18T12:00:00+02:00"
+          assert os.environ["GITHUB_REPOSITORY"] == repo
+          assert os.environ["GITHUB_REF"] == "refs/heads/main"
+          assert os.environ["GITHUB_ACTOR"] == "AkcayFx"
+
+          def request(method, path, data=None):
+              payload = json.dumps(data).encode() if data is not None else None
+              req = urllib.request.Request(
+                  api + path, data=payload, method=method,
+                  headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                           "Accept": "application/vnd.github+json",
+                           "Content-Type": "application/json",
+                           "X-GitHub-Api-Version": "2022-11-28"},
+              )
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  return json.load(response)
+
+          def calendar():
+              class CalendarParser(HTMLParser):
+                  cells = []
+                  def handle_starttag(self, tag, attributes):
+                      attrs = dict(attributes)
+                      if attrs.get("data-date") == "2026-10-18":
+                          self.cells.append({k: attrs[k] for k in ("data-date", "data-level", "data-count") if k in attrs})
+              try:
+                  req = urllib.request.Request(
+                      "https://github.com/users/AkcayFx/contributions?from=2026-10-18&to=2026-10-19",
+                      headers={"User-Agent": "HoneyAGI-calendar-check", "Accept": "text/html"},
+                  )
+                  with urllib.request.urlopen(req, timeout=10) as response:
+                      page = response.read(1048576).decode("utf-8", errors="replace")
+                  parser = CalendarParser()
+                  parser.cells = []
+                  parser.feed(page)
+                  return {"cells": parser.cells}
+              except Exception as exc:
+                  return {"unavailable": type(exc).__name__}
+
+          print(json.dumps({"calendar_before": calendar()}))
+          commit = request("GET", "/git/commits/" + source)
+          assert [p["sha"] for p in commit["parents"]] == [parent]
+          assert commit["message"] == "ci: prepare matching October 18 checkpoint dates"
+          assert request("GET", "/git/ref/heads/main")["object"]["sha"] == source
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+          text = os.environ["CHECKPOINT_TEXT"].replace("__RECORDING_TIME__", now)
+          tree = request("POST", "/git/trees", {
+              "base_tree": commit["tree"]["sha"],
+              "tree": [{"path": "docs/checkpoints/2026-10-18.md", "mode": "100644",
+                        "type": "blob", "content": text}],
+          })
+          identity = {"name": "AkcayFx", "email": "190210367+AkcayFx@users.noreply.github.com", "date": target_date}
+          dated = request("POST", "/git/commits", {
+              "message": "docs: align requested October 18 checkpoint dates",
+              "tree": tree["sha"], "parents": [source],
+              "author": identity, "committer": identity,
+          })
+          assert dated["author"]["date"].startswith("2026-10-18")
+          assert dated["committer"]["date"].startswith("2026-10-18")
+          assert request("GET", "/git/ref/heads/main")["object"]["sha"] == source
+          request("PATCH", "/git/refs/heads/main", {"sha": dated["sha"], "force": False})
+          print(json.dumps({"sha": dated["sha"], "author_date": dated["author"]["date"],
+                            "committer_date": dated["committer"]["date"], "actual_recording_time": now}))
+          for _ in range(3):
+              result = calendar()
+              print(json.dumps({"calendar_after": result}))
+              if any(int(c.get("data-level", "0")) > 0 for c in result.get("cells", [])):
+                  break
+              time.sleep(5)
