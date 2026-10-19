@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter and October 14 verification command are implemented and tested; Day 4 still requires successful real-model verification. See [DAY_4.md](DAY_4.md). October 17 adds the optional bounded evidence-context implementation with simulated provider tests; see [DAY_5.md](DAY_5.md). Day 4 real-model acceptance remains open. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
+For the day-by-day implementation tasks, acceptance checks and suggested commits, see [DAILY_TASKS.md](DAILY_TASKS.md). The Day 3 adapter and October 14 verification command are implemented and tested; Day 4 still requires successful real-model verification. See [DAY_4.md](DAY_4.md). October 17 adds the optional bounded evidence-context implementation with simulated provider tests; see [DAY_5.md](DAY_5.md). Day 4 real-model acceptance remains open. October 19 adds explicitly triggered, bounded feedback sequences and dashboard progress; see [DAY_6.md](DAY_6.md). Live-model acceptance is still open. The daily checklist targets an evaluated MVP first, followed by the broader capability backlog.
 
 ## Milestone 1 — delivered
 

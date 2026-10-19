@@ -36,6 +36,16 @@ This implements the evidence-context foundation; the offline planner keeps its f
 demo smoke test with simulated model responses. See [Day 5 notes](docs/DAY_5.md).
 Real-model verification remains pending.
 
+## October 19 progress
+
+After resolving an initial plan's checks, select **Continue assessment** to request another plan
+with compact prior observations. The goal and provider stay fixed; sequences stop after four
+planning attempts or no further proposals. Every new check requires approval. The dashboard shows
+steps and blocked/ready/finished states, and retries retain their request ID after a lost response.
+**262 tests pass on Windows and Linux**, including feedback, dashboard retry and real-loopback
+smoke checks. See [Day 6 notes](docs/DAY_6.md). Model responses remain simulated; live-model acceptance
+is still pending.
+
 ## Run locally
 
 1. Clone the repository and open a terminal in its root folder:
@@ -67,7 +77,7 @@ The launcher checks ports 8000 and 8001, starts the demo as a child process, bin
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-230 tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, bounded evidence selection, immutable context, evidence opt-in/replay, hostile-text exclusion, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
+The regression tests cover approvals, exact scope, URL encoding attempts, redirects, concurrent execution claims, retests, token/host/origin boundaries, request and response limits, interruption recovery, evidence redaction, planner output injection, live-provider request/envelope validation, credential exclusion, upstream failures, response limits/cancellation, provider configuration, isolated verification, hidden credential input, decoded secret rejection, concurrent request replay, mid-generation scope changes, database migration, bounded evidence selection, immutable context, evidence opt-in/replay, hostile-text exclusion, feedback budgets/concurrency, dashboard retry behavior, and audit/evidence/plan integrity. Most HTTP responses are mocked; the live demo is also checked separately during development. Test data is separate from the application database.
 
 ## Automated checks
 
@@ -90,6 +100,7 @@ These checks do not complete the pending real-model verification.
 | `app/tools.py` | Header adapter, bounded execution, observations and comparisons |
 | `app/db.py` | SQLite transactions, atomic claims, evidence, hash-linked audit |
 | `app/models.py` | Strict request schemas; additional fields rejected |
+| `app/feedback.py` | Bounded predecessor chains and derived planning progress |
 | `app/planning.py` | Planner protocol, fake provider, output validation and orchestration |
 | `app/evidence.py` | Bounded, sanitized evidence observations for optional planning context |
 | `app/providers.py` | Bounded OpenAI-compatible adapter and explicit provider selection |

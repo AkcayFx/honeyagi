@@ -103,3 +103,26 @@ Typed evidence cannot authorize actions. The policy/transaction checks and separ
 remain authoritative. Prompt wording asks the model to use evidence IDs, but narrative citations
 are not yet validated; generated summaries must still be reviewed as untrusted model text.
 No real-model evidence-informed reasoning claim follows from the mocked adapter tests.
+
+## October 19 feedback boundary
+
+Continuation is an explicit operator request with a bounded predecessor chain of at most four
+planning attempts. The server inherits goal/provider identity and forces sanitized evidence input.
+The model cannot increase the budget, change scope, approve checks or request a next step itself.
+Starting a new initial plan is an explicit operator action; the sequence cap is not a global quota.
+
+SQLite write transactions check predecessor freshness, unresolved actions and the step budget
+before reserving an attempt. They recheck policy, duplicates and concurrent unresolved manual
+actions before proposal insertion. Stable request IDs replay saved provenance rather than
+selecting a newer predecessor. Failed/denied attempts stop the sequence; restart never automatically
+resumes planning. The existing two-planner limit and single-process recovery assumption remain.
+
+Derived progress is not a signed authorization record. The predecessor link participates in the
+completed-plan hash, while underlying audit/evidence checks still detect ordinary edits before
+evidence is shared. A database owner can rewrite all hashes. An empty final plan records no further
+proposals; it does not establish successful execution, full coverage or application security.
+
+The browser never calls approval/execution from the Continue control. It retains a request UUID
+after a lost response and disables continuation while actions remain unresolved. Behavior tests
+cover cleanup re-enabling buttons, retry reuse and overlapping clicks. Provider responses in the
+regression suite are simulated. Live reasoning and citation correctness remain unverified.

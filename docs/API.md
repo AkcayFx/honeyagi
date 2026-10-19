@@ -9,6 +9,7 @@ Base: `http://127.0.0.1:8000/api/v1`. All API endpoints require `Authorization: 
 | GET | `/assessments/{id}` | Assessment and action queue |
 | GET | `/planner` | Provider identity and the configured planning mode (not a successful-live-call claim) |
 | POST | `/assessments/{id}/plans` | Generate a validated plan with pending proposals |
+| POST | `/assessments/{id}/continue` | Continue the latest planning sequence with compact evidence |
 | POST | `/assessments/{id}/actions` | Create a pending proposal |
 | POST | `/actions/{id}/approve` | Approve a pending action |
 | POST | `/actions/{id}/reject` | Reject a pending action |
@@ -106,3 +107,26 @@ Raw header values and stored free-text findings are excluded. The snapshot is pe
 covered by completed-plan integrity. Broken report/evidence integrity returns 409 before
 contacting the provider. No new approval or execution behavior is introduced. Offline baseline
 rules are unchanged. See [DAY_5.md](DAY_5.md) for limits, compatibility and validation.
+
+## Continue an assessment (October 19)
+
+After resolving the latest plan's actions, send:
+
+```json
+{"request_id": "25f5d43d-a556-40f8-bc97-58dcb5447ea1"}
+```
+
+to `POST /assessments/{id}/continue`. The UUID is optional but should be stable on retry.
+The inherited goal/provider and bounded evidence context are selected by the backend.
+No other request fields are accepted. A successful new continuation returns 201; replay returns
+200 with the original saved predecessor/context. Normal planning error codes still apply.
+
+Each sequence has at most four planning attempts including its initial plan. Pending, approved or
+running actions block continuation. Failed/denied plans, an empty final plan, a provider change,
+and exhausted budgets require review instead of another continuation; invalid progression returns
+409 before any provider request. New proposals remain pending. No automatic checks are run.
+
+Assessment details and reports now include `planning_progress` with status, steps used, maximum
+steps, latest plan ID and a `can_continue` flag. Continued plans include `continuation_of`.
+The cap is per sequence: explicitly generating a new initial plan starts a new one.
+See [Day 6 notes](DAY_6.md) for states, replay, transaction guards and limitations.
