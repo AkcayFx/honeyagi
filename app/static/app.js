@@ -1,6 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {token: '', assessments: [], selected: null, assessment: null, report: null, busy: false, plannerInfo: null, planRequest: null};
+const state = {token: '', assessments: [], selected: null, assessment: null, report: null, busy: false, plannerInfo: null, planRequest: null, continueRequests: {}};
 function node(tag, text, className) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (className) n.className = className; return n; }
 function notify(message, error=false) { $('notice').textContent=message; $('notice').className='notice'+(error?' error':''); $('notice').hidden=false; }
 async function api(path, method='GET', data) {
@@ -14,7 +14,7 @@ async function task(work) {
   state.busy=true;
   document.querySelectorAll('button').forEach(b=>b.disabled=true);
   try { await work(); } catch(e) { notify(e.message,true); }
-  finally { state.busy=false; document.querySelectorAll('button').forEach(b=>b.disabled=false); }
+  finally { state.busy=false; document.querySelectorAll('button').forEach(b=>b.disabled=false); renderPlanningProgress(); }
 }
 function renderAssessments() {
   const list=$('assessment-list');
@@ -23,12 +23,32 @@ function renderAssessments() {
   for(const a of state.assessments) { const b=node('button',undefined,'assessment-item'+(a.id===state.selected?' selected':'')); b.append(node('strong',a.name),node('span',a.targets.length+' targets · '+new Date(a.created_at).toLocaleDateString())); b.onclick=()=>task(()=>select(a.id)); list.append(b); }
 }
 function control(label, className, work) { const b=node('button',label,className); b.type='button'; b.onclick=()=>task(work); return b; }
+function renderPlanningProgress() {
+  const p=state.assessment?.planning_progress;
+  const button=$('continue-button');
+  if(!p){button.disabled=true;return;}
+  const retry=Boolean(state.continueRequests[state.selected]);
+  const messages={
+    not_started:'Generate an initial plan to start a sequence.',
+    generating:'A planning request is in progress. Refresh after it finishes.',
+    awaiting_actions:'Resolve pending checks: reject them, or approve and run them, before continuing.',
+    ready:'Continue to review completed results and request the next proposed checks.',
+    finished:'No further checks proposed. Review the evidence; this is not a claim that the application is secure.',
+    budget_reached:'The planning step limit is reached. Review this sequence before explicitly starting a new plan.',
+    blocked:'This sequence stopped after a denied, failed or invalid planning step. Review the plan history.'
+  };
+  $('planning-progress').textContent='Planning steps: '+p.steps_used+' / '+p.max_steps+' · '+(messages[p.status]||'Refresh to inspect progress.');
+  $('continue-help').textContent=retry?'A response was not received. Retry uses the same request ID to recover the original result.':'Each continuation includes compact prior observations and keeps the same goal. New proposals require approval.';
+  button.textContent=retry?'Retry continuation':'Continue assessment';
+  button.disabled=state.busy||(!p.can_continue&&!retry);
+}
 function renderPlans() {
   $('planner-panel').hidden=false;
   const info=state.plannerInfo;
   $('planner-badge').textContent=info?.live_ai?'AI · '+info.model:'RULE-BASED · OFFLINE';
   $('planner-help').textContent=info?.live_ai?'Your goal and scoped check list are sent to the configured model. You may also include compact observations from prior checks. It proposes header checks; review and approve each proposal before running it.':'The offline baseline planner proposes header checks for unchecked URLs in scope. Review and approve each proposal before running it.';
   $('planner-footer').textContent=info?.live_ai?'LLM planner configured · '+info.model:'Rule-based planning · no model requests';
+  renderPlanningProgress();
   const list=$('plan-list'); list.replaceChildren();
   const plans=state.assessment.plans||[];
   if(!plans.length)return;
@@ -40,6 +60,7 @@ function renderPlans() {
     record.append(meta,node('p',plan.goal,'plan-goal'),node('p',plan.summary||(plan.status==='running'?'Planning is in progress. Refresh to check its status.':'No checks were created. Generate a new plan to try again.')));
     const provenance=node('details'), summary=node('summary','Planner source');
     provenance.append(summary,node('p',plan.provider+' · '+plan.model));
+    if(plan.continuation_of)provenance.append(node('p','Continues plan '+plan.continuation_of));
     if(plan.evidence_context)provenance.append(node('p',plan.evidence_context.observations.length+' prior observations included · '+plan.evidence_context.omitted_count+' older observations omitted'));
     record.append(provenance);list.append(record);
   }
@@ -113,9 +134,25 @@ $('plan-form').onsubmit=e=>{e.preventDefault();task(async()=>{
   try { plan=await api('/assessments/'+state.selected+'/plans','POST',{goal,include_evidence:includeEvidence,request_id:state.planRequest.key}); }
   catch(error) { if(error.status){state.planRequest=null;await refresh();} throw error; }
   state.planRequest=null;
+  delete state.continueRequests[state.selected];
   await refresh();
   notify(plan.action_ids.length?plan.action_ids.length+' checks proposed. Review and approve each check before running it.':plan.summary);
 });};
+$('continue-button').onclick=()=>task(async()=>{
+  const assessmentId=state.selected;
+  if(!assessmentId)throw new Error('Select an assessment first.');
+  if(!state.continueRequests[assessmentId]){
+    if(!state.assessment?.planning_progress?.can_continue)throw new Error('Resolve the current checks and review planning progress before continuing.');
+    state.continueRequests[assessmentId]=crypto.randomUUID();
+  }
+  notify(state.plannerInfo?.live_ai?'Reviewing prior observations with the configured model…':'Continuing the local baseline sequence…');
+  let plan;
+  try {plan=await api('/assessments/'+assessmentId+'/continue','POST',{request_id:state.continueRequests[assessmentId]});}
+  catch(error){if(error.status){delete state.continueRequests[assessmentId];await refresh();}throw error;}
+  delete state.continueRequests[assessmentId];
+  await refresh();
+  notify(plan.action_ids.length?plan.action_ids.length+' new checks proposed. Review and approve each one.':'No further checks proposed. Review the captured evidence and limitations.');
+});
 $('export-button').onclick=()=>task(async()=>{const report=await api('/assessments/'+state.selected+'/report');const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));const link=node('a');link.href=url;link.download='assessment-'+state.selected+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('JSON report downloaded.');});
 $('close-evidence').onclick=()=>{$('evidence-section').hidden=true;};
 $('overview-nav').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
