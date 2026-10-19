@@ -1,0 +1,77 @@
+name: Record requested October 18 checkpoint
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/record-oct18-checkpoint.yml"]
+
+permissions: {}
+
+jobs:
+  record:
+    if: github.repository == 'AkcayFx/honeyagi' && github.ref == 'refs/heads/main' && github.actor == 'AkcayFx' && github.event.before == '414d9cbeecc32109187a4f868a6601b126cec5d1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - name: Append the requested dated documentation commit
+        shell: python
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHECKPOINT_TEXT: "# October 18 checkpoint — recorded retrospectively\n\nRecorded on October 19, 2026 at the repository owner's request. This documentation commit's\nauthor date is October 18 so GitHub attributes it to that calendar day; its committer date\nis the actual recording time. This note does not claim development or testing occurred on October 18.\n\n## Observed project checkpoint\n\n- HoneyAGI implements the thesis: Design and Implementation of an AI-Assisted Security\n  Assessment Platform with Controlled Tool Execution.\n- Exact scope remains the three bundled loopback demo URLs and the HTTP header checker.\n- New actions require separate human approval and execution.\n- Compact planning observations reference original evidence IDs and hashes; raw response\n  text is excluded from model context.\n- As observed on October 19, operator-triggered feedback sequences and dashboard controls\n  are implemented. Sequences allow four planning attempts and retain replay provenance.\n- Verified source: 414d9cbeecc32109187a4f868a6601b126cec5d1.\n- Verification observed on October 19: 262 tests passed on Windows and Linux, plus Python\n  and JavaScript syntax checks and the offline planner verification check.\n- Verification run: https://github.com/AkcayFx/honeyagi/actions/runs/39248970031.\n- Provider responses in these tests were simulated. Real-model verification remains pending.\n\n## Next development work\n\n1. Run the isolated planner verification locally with a configured model and private API key.\n2. Evaluate an evidence-informed planning sequence on the same fixed lab.\n3. Add validated evidence citations to generated assessment summaries before treating them as reports.\n"
+          DAY6_TEXT: "# October 19, 2026 — operator-triggered assessment feedback\n\nThis session adds the Day 6 feedback foundation and dashboard controls. Commits use their actual\nOctober 19 timestamps. No development or testing is claimed to have happened on October 18.\nA separately requested retrospective documentation checkpoint is described in\n[the October 18 note](checkpoints/2026-10-18.md), including its actual October 19 recording date.\n\n## Delivered behavior\n\nGenerate an initial plan, resolve its proposed checks, then choose **Continue assessment**.\nThe next request retains the original goal and configured provider/model and always includes\nthe bounded evidence context from Day 5. A provider may propose another unchecked scoped URL\nor return no further actions. Newly proposed actions remain pending and cannot execute without\nseparate approval. No automatic model calls or tool execution occur when a check finishes.\n\nA sequence permits **four total planning attempts**, including the initial request and an empty\nfinal response. Failed/denied inserted requests consume a step and stop continuation. Pending,\napproved or running actions anywhere in the assessment block the next step. Completed, rejected\nand failed checks are resolved states; only completed checks contribute evidence. Completion\nwith no further proposed actions means the planning sequence ended, not that every check ran or\nthe application is secure.\n\nThe fixed tool/target policy and duplicate checks remain unchanged. Retests still require an\nexplicit new pending proposal through the existing retest endpoint. The offline provider still\nuses fixed baseline rules; these controls do not add reasoning to it.\n\n## API and provenance\n\n`POST /api/v1/assessments/{id}/continue` accepts only an optional UUID `request_id`.\nThe server selects the latest plan, carries forward its goal/provider identity, and supplies\n`include_evidence=true` internally. Client-supplied goals, budgets, evidence switches, predecessor\nIDs or approval fields are rejected.\n\nNew plans return 201; a repeated request returns its saved plan with 200. The saved predecessor\nand evidence snapshot remain the same after later steps and restarts. UUIDs cannot be reused\nbetween assessments or between initial planning and continuation. Running requests conflict;\nfailed requests replay their recorded failure without a second provider call.\n\nThe predecessor link is stored as `continuation_of`, included in the plan hash, and bound to\nthe planning audit metadata with a step number. Null predecessor fields are omitted from old\nplan serialization, preserving existing fingerprints, hashes and replays. The migration adds\none nullable column; it does not discard assessments or evidence.\n\nThe write transaction rechecks the latest plan, unresolved actions, provider identity and step\nbudget before inserting a new planning attempt. Scope, duplicate checks and any newly unresolved\nmanual action are rechecked before inserting proposals. The existing global planner concurrency\nlimit, deadline, evidence validation and output validation still apply.\n\nAssessment details and JSON reports expose `planning_progress` with `status`, `steps_used`,\n`max_steps`, `latest_plan_id`, and `can_continue`. Status values are `not_started`, `generating`,\n`awaiting_actions`, `ready`, `finished`, `budget_reached`, and `blocked`.\n\nThe cap is per sequence, not a global account quota. An operator can explicitly generate a new\ninitial plan to start a new sequence. A failed sequence is not automatically resumed. The existing\nsingle-process recovery assumption remains: interrupted plans become failed after restart.\n\n## Dashboard\n\nThe dashboard displays the planning-step count and explains whether checks need decisions,\nthe next step is ready, no further checks were proposed, or the sequence stopped. The Continue\nbutton remains disabled when blocked, including after shared request-cleanup code runs.\nA lost response retains its request UUID; an explicit retry recovers the original result.\nOverlapping clicks issue one request. Starting a new initial plan explicitly starts a new sequence.\n\n## Validation and remaining work\n\nBackend tests cover multi-step planning, step limits, unresolved actions, provider failures,\nscope/approval attempts, duplicate output, replay across later steps/restarts, concurrent requests,\nmanual-proposal races, evidence integrity, migration and restart recovery. The existing real-loopback\nsmoke test now exercises an initial proposal, approved HTTP checks on all three demo endpoints,\nand an evidence-informed continuation to a simulated provider.\n\nNode VM tests exercise the actual dashboard script with a minimal DOM: disabled states after\ncleanup, lost-response replay, server denial and overlapping clicks. Provider responses remain\nsimulated; this does not complete Day 4 live-model acceptance or measure reasoning quality.\n\n**262 tests passed on Windows and Linux**, including 28 new backend cases and four dashboard\nbehavior tests. Python compilation, dashboard JavaScript syntax and offline verification CLI\nchecks also passed. See the [complete validation run](https://github.com/AkcayFx/honeyagi/actions/runs/39248608883)\nfor source commit `a409c33246a107f128d5bea0eedd80db5b9ade5a`. The backend increment also passed both\nplatforms independently in [its validation run](https://github.com/AkcayFx/honeyagi/actions/runs/39248341806).\n\nNext complete real-model verification locally, then evaluate a real evidence-informed sequence. Day 7 should validate\nevidence citations in assessment summaries; current model prose is still untrusted.\n"
+        run: |
+          import datetime
+          import json
+          import os
+          import urllib.request
+
+          # No checkout, third-party action, persisted Git credential, force push or self-deletion.
+          repo = "AkcayFx/honeyagi"
+          api = "https://api.github.com/repos/" + repo
+          source = os.environ["GITHUB_SHA"]
+          authorized_parent = "414d9cbeecc32109187a4f868a6601b126cec5d1"
+          assert os.environ["GITHUB_REPOSITORY"] == repo
+          assert os.environ["GITHUB_REF"] == "refs/heads/main"
+          assert os.environ["GITHUB_ACTOR"] == "AkcayFx"
+
+          def request(method, path, data=None):
+              payload = json.dumps(data).encode() if data is not None else None
+              req = urllib.request.Request(
+                  api + path, data=payload, method=method,
+                  headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                           "Accept": "application/vnd.github+json",
+                           "Content-Type": "application/json",
+                           "X-GitHub-Api-Version": "2022-11-28"},
+              )
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  return json.load(response)
+
+          commit = request("GET", "/git/commits/" + source)
+          assert [parent["sha"] for parent in commit["parents"]] == [authorized_parent]
+          assert commit["message"] == "ci: prepare requested October 18 checkpoint"
+          assert request("GET", "/git/ref/heads/main")["object"]["sha"] == source
+          tree = request("POST", "/git/trees", {
+              "base_tree": commit["tree"]["sha"],
+              "tree": [
+                  {"path": "docs/checkpoints/2026-10-18.md", "mode": "100644", "type": "blob",
+                   "content": os.environ["CHECKPOINT_TEXT"]},
+                  {"path": "docs/DAY_6.md", "mode": "100644", "type": "blob",
+                   "content": os.environ["DAY6_TEXT"]},
+              ],
+          })
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+          identity = {"name": "AkcayFx", "email": "190210367+AkcayFx@users.noreply.github.com"}
+          dated = request("POST", "/git/commits", {
+              "message": "docs: add requested October 18 retrospective checkpoint",
+              "tree": tree["sha"], "parents": [source],
+              "author": {**identity, "date": "2026-10-18T12:00:00+02:00"},
+              "committer": {**identity, "date": now},
+          })
+          assert dated["author"]["date"].startswith("2026-10-18")
+          assert request("GET", "/git/ref/heads/main")["object"]["sha"] == source
+          # Non-forced, single-parent fast-forward rejects a concurrently advanced branch.
+          request("PATCH", "/git/refs/heads/main", {"sha": dated["sha"], "force": False})
+          print(json.dumps({"sha": dated["sha"], "author_date": dated["author"]["date"],
+                            "committer_date": dated["committer"]["date"]}))
