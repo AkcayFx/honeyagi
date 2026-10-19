@@ -8,6 +8,7 @@ from pydantic import Field, ValidationError, field_validator
 from .models import StrictModel, ProposalInput
 from .policy import PolicyError, validate_action
 from .evidence import EvidenceContext, EvidenceContextError
+from .feedback import ContinuationDenied
 
 
 class PlanInput(StrictModel):
@@ -21,6 +22,10 @@ class PlanInput(StrictModel):
         if any(ord(c) < 32 and c not in "\n\r\t" for c in value):
             raise ValueError("Goal contains control characters")
         return value
+
+
+class ContinuationInput(StrictModel):
+    request_id: UUID = Field(default_factory=uuid4)
 
 
 class PlanOutput(StrictModel):
@@ -124,7 +129,24 @@ class PlanningService:
         # Copy provenance at the trusted boundary; provider output cannot replace it.
         self.info = PlannerInfo.model_validate(provider.info.model_dump(), strict=True)
 
-    async def generate(self, assessment_id, request):
+    async def continue_assessment(self, assessment_id, request):
+        # Recover the original predecessor on replay instead of rebinding to a newer plan.
+        saved = self.store.get_plan(str(request.request_id))
+        if saved is not None:
+            if saved["assessment_id"] != assessment_id or "continuation_of" not in saved:
+                raise PlanningError(409, "Request ID belongs to another planning request")
+            predecessor, goal = saved["continuation_of"], saved["goal"]
+        else:
+            progress = self.store.get_planning_progress(assessment_id)
+            if not progress["can_continue"]:
+                raise PlanningError(409, "Continue requires a completed plan with resolved actions and remaining steps")
+            previous = self.store.get_plan(progress["latest_plan_id"])
+            predecessor, goal = previous["id"], previous["goal"]
+        return await self.generate(assessment_id, PlanInput(
+            goal=goal, request_id=request.request_id, include_evidence=True),
+            continuation_of=predecessor)
+
+    async def generate(self, assessment_id, request, *, continuation_of=None):
         from .db import PlanningBusy, PlanConflict, PlanStale
         plan_id = str(request.request_id)
         protected = (self.settings.token, self.settings.planner_api_key)
@@ -134,7 +156,10 @@ class PlanningService:
         try:
             record, created = self.store.begin_plan(
                 plan_id, assessment_id, request.goal, self.info.model_dump(),
-                include_evidence=request.include_evidence, demo_origin=self.settings.demo_origin)
+                include_evidence=request.include_evidence, demo_origin=self.settings.demo_origin,
+                continuation_of=continuation_of)
+        except ContinuationDenied as exc:
+            raise PlanningError(409, "Planning sequence changed, is blocked, or has reached its step limit") from exc
         except EvidenceContextError as exc:
             raise PlanningError(409, "Evidence integrity check failed; no provider request was sent") from exc
         except PlanningBusy as exc:

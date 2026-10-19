@@ -285,16 +285,21 @@ def test_real_loopback_demo_results_reach_mock_provider_without_auto_execution(t
         requests = []
         def upstream(request):
             requests.append(request)
-            return httpx.Response(200, json=envelope(plan_text(actions=[])))
+            return httpx.Response(200, json=envelope(plan_text(actions=[{
+                "tool": "http_headers", "target": ORIGIN + "/vulnerable", "rationale": "Initial baseline"
+            }] if len(requests) == 1 else [])))
         settings = Settings(db_path=tmp_path / "real-demo.sqlite3", token=TOKEN,
                             planner_provider="openai_compatible", planner_model="simulated-demo-v1",
                             planner_base_url="https://planner.example.invalid/v1", planner_api_key=KEY)
         provider = OpenAICompatiblePlanner(settings, httpx.MockTransport(upstream))
         with TestClient(create_app(settings, planner=provider), headers={"Authorization": "Bearer " + TOKEN}) as c:
             a = assessment(c)
-            for path in ("/vulnerable", "/hardened", "/redirect"):
+            initial = generate(c, a["id"])
+            assert initial.status_code == 201, initial.text
+            completed(c, c.app.state.store.get_action(initial.json()["action_ids"][0]))
+            for path in ("/hardened", "/redirect"):
                 completed(c, proposal(c, a["id"], ORIGIN + path))
-            result = generate(c, a["id"])
+            result = c.post(f"/api/v1/assessments/{a['id']}/continue", json={})
             assert result.status_code == 201, result.text
             items = {i["target"]: i for i in result.json()["evidence_context"]["observations"]}
             assert items[ORIGIN + "/vulnerable"]["csp_present"] is False
@@ -302,7 +307,8 @@ def test_real_loopback_demo_results_reach_mock_provider_without_auto_execution(t
             assert items[ORIGIN + "/hardened"]["nosniff_valid"] is True
             assert items[ORIGIN + "/hardened"]["referrer_policy_present"] is True
             assert items[ORIGIN + "/redirect"]["conclusion"] == "inconclusive"
-            assert len(requests) == 1 and result.json()["action_ids"] == []
+            assert len(requests) == 2 and result.json()["action_ids"] == []
+            assert c.app.state.store.get_planning_progress(a["id"])["status"] == "finished"
     finally:
         server.should_exit = True
         thread.join(timeout=5)

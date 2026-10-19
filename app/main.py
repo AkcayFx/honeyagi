@@ -11,7 +11,7 @@ from .db import Store, digest, ExecutionBusy
 from .models import AssessmentInput, ProposalInput, DecisionInput
 from .policy import PolicyError, validate_target, validate_action
 from .tools import HeaderChecker, compare
-from .planning import PlanningService, PlanInput, PlanningError
+from .planning import PlanningService, PlanInput, ContinuationInput, PlanningError
 from .providers import build_planner
 
 
@@ -111,13 +111,23 @@ def create_app(settings=None, checker=None, planner=None, *, announce_token=True
 
     @app.get("/api/v1/assessments/{assessment_id}", dependencies=auth)
     def get_assessment(assessment_id: str):
-        return {**assessment_or_404(assessment_id), "actions": store.list_actions(assessment_id), "plans": store.list_plans(assessment_id)}
+        return {**assessment_or_404(assessment_id), "actions": store.list_actions(assessment_id), "plans": store.list_plans(assessment_id),
+                "planning_progress": store.get_planning_progress(assessment_id)}
 
     @app.post("/api/v1/assessments/{assessment_id}/plans", dependencies=auth)
     async def generate_plan(assessment_id: str, data: PlanInput):
         assessment_or_404(assessment_id)
         try:
             plan, created = await planning.generate(assessment_id, data)
+        except PlanningError as exc:
+            raise HTTPException(exc.status_code, {"message": exc.message, "plan_id": exc.plan_id}) from exc
+        return JSONResponse(plan, status_code=201 if created else 200)
+
+    @app.post("/api/v1/assessments/{assessment_id}/continue", dependencies=auth)
+    async def continue_assessment(assessment_id: str, data: ContinuationInput):
+        assessment_or_404(assessment_id)
+        try:
+            plan, created = await planning.continue_assessment(assessment_id, data)
         except PlanningError as exc:
             raise HTTPException(exc.status_code, {"message": exc.message, "plan_id": exc.plan_id}) from exc
         return JSONResponse(plan, status_code=201 if created else 200)

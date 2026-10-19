@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
 from .evidence import build_evidence_context, EvidenceContextError
+from .feedback import planning_progress, ContinuationDenied
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -95,6 +96,8 @@ class Store:
                 db.execute("ALTER TABLE actions ADD COLUMN plan_id TEXT REFERENCES plans(id)")
             if "evidence_context_json" not in {r["name"] for r in db.execute("PRAGMA table_info(plans)")}:
                 db.execute("ALTER TABLE plans ADD COLUMN evidence_context_json TEXT")
+            if "continuation_of" not in {r["name"] for r in db.execute("PRAGMA table_info(plans)")}:
+                db.execute("ALTER TABLE plans ADD COLUMN continuation_of TEXT REFERENCES plans(id)")
         # One process only: a previous process's in-flight request cannot be replayed.
         with self.connection(write=True) as db:
             for row in db.execute("SELECT * FROM actions WHERE status='running'").fetchall():
@@ -176,6 +179,9 @@ class Store:
     @staticmethod
     def plan(db, row):
         result = {**dict(row), "action_ids": json.loads(row["action_ids"])}
+        predecessor = result.pop("continuation_of", None)
+        if predecessor is not None:
+            result["continuation_of"] = predecessor
         context_json = result.pop("evidence_context_json", None)
         # Omit absent context to preserve hashes and replays of pre-migration plans.
         if context_json is not None:
@@ -194,9 +200,11 @@ class Store:
             return [self.plan(db, row) for row in db.execute(
                 "SELECT * FROM plans WHERE assessment_id=? ORDER BY rowid DESC", (assessment_id,)).fetchall()]
 
-    def begin_plan(self, plan_id, assessment_id, goal, info, *, include_evidence=False, demo_origin=None):
+    def begin_plan(self, plan_id, assessment_id, goal, info, *, include_evidence=False, demo_origin=None,
+                   continuation_of=None):
         fingerprint = digest({"assessment_id": assessment_id, "goal": goal, **info,
-                              **({"include_evidence": True} if include_evidence else {})})
+                              **({"include_evidence": True} if include_evidence else {}),
+                              **({"continuation_of": continuation_of} if continuation_of else {})})
         with self.connection(write=True) as db:
             existing = db.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
             if existing:
@@ -206,6 +214,16 @@ class Store:
             active = db.execute("SELECT assessment_id FROM plans WHERE status='running'").fetchall()
             if len(active) >= 2 or any(r[0] == assessment_id for r in active):
                 raise PlanningBusy()
+            step = None
+            if continuation_of is not None:
+                progress = planning_progress(db, assessment_id)
+                previous = db.execute("SELECT * FROM plans WHERE id=?", (continuation_of,)).fetchone()
+                if (not progress["can_continue"] or progress["latest_plan_id"] != continuation_of or
+                        not previous or previous["assessment_id"] != assessment_id or
+                        previous["goal"] != goal or previous["provider"] != info["provider"] or
+                        previous["model"] != info["model"] or not include_evidence):
+                    raise ContinuationDenied()
+                step = progress["steps_used"] + 1
             context = None
             if include_evidence:
                 # The writer lock prevents evidence changing between snapshot and insert.
@@ -213,14 +231,15 @@ class Store:
                     context = asdict(build_evidence_context(self.report(assessment_id), demo_origin))
                 except (ValueError, TypeError, KeyError, AttributeError, RecursionError) as exc:
                     raise EvidenceContextError() from exc
-            db.execute("INSERT INTO plans (id,assessment_id,goal,provider,model,fingerprint,status,created_at,evidence_context_json) VALUES (?,?,?,?,?,?,'running',?,?)",
+            db.execute("INSERT INTO plans (id,assessment_id,goal,provider,model,fingerprint,status,created_at,evidence_context_json,continuation_of) VALUES (?,?,?,?,?,?,'running',?,?,?)",
                        (plan_id, assessment_id, goal, info["provider"], info["model"], fingerprint, now(),
-                        canonical(context) if context is not None else None))
+                        canonical(context) if context is not None else None, continuation_of))
             self.audit(db, assessment_id, "planning_started", None,
                        {"plan_id": plan_id, **info, "goal_sha256": digest(goal),
                         **({"evidence_context_sha256": digest(context),
                             "evidence_count": len(context["observations"]),
-                            "evidence_omitted_count": context["omitted_count"]} if context is not None else {})})
+                            "evidence_omitted_count": context["omitted_count"]} if context is not None else {}),
+                        **({"continuation_of": continuation_of, "step_number": step} if continuation_of else {})})
             row = db.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
             return self.plan(db, row), True
 
@@ -239,6 +258,10 @@ class Store:
             if not row:
                 raise PlanStale()
             assessment = self.assessment(db.execute("SELECT * FROM assessments WHERE id=?", (row["assessment_id"],)).fetchone())
+            if row["continuation_of"] and db.execute(
+                    "SELECT 1 FROM actions WHERE assessment_id=? AND status IN ('pending','approved','running') LIMIT 1",
+                    (assessment["id"],)).fetchone():
+                raise PlanStale()
             # Recheck the current database inside the same transaction as insertion.
             for action in output.actions:
                 validate_action(action.tool, action.target, assessment["targets"], demo_origin)
@@ -262,6 +285,11 @@ class Store:
                        {"plan_id": plan_id, "plan_sha256": plan_hash, "action_count": len(ids)})
         return self.get_plan(plan_id)
 
+    def get_planning_progress(self, assessment_id):
+        with self.connection() as db:
+            db.execute("BEGIN")
+            return planning_progress(db, assessment_id)
+
     def report(self, assessment_id):
         # Consistent snapshot while other requests may write.
         with self.connection() as db:
@@ -272,6 +300,7 @@ class Store:
             actions = [self.action(r) for r in db.execute("SELECT * FROM actions WHERE assessment_id=? ORDER BY created_at", (assessment_id,))]
             audit = [{**dict(r), "details": json.loads(r["details"])} for r in db.execute("SELECT * FROM audit WHERE assessment_id=? ORDER BY seq", (assessment_id,))]
             plans = [self.plan(db, r) for r in db.execute("SELECT * FROM plans WHERE assessment_id=? ORDER BY rowid", (assessment_id,)).fetchall()]
+            progress = planning_progress(db, assessment_id)
         previous, valid = "0" * 64, True
         for entry in audit:
             payload = {k: v for k, v in entry.items() if k not in ("seq", "hash")}
@@ -286,7 +315,7 @@ class Store:
                           and plan_hashes.get(p["id"]) == p["sha256"]
                           and p["action_ids"] == [a["id"] for a in p["proposals"]] for p in plans if p["status"] == "completed")
         return {"schema_version": 2, "generated_at": now(), "assessment": self.assessment(row),
-                "actions": actions, "plans": plans, "audit": audit,
+                "actions": actions, "plans": plans, "audit": audit, "planning_progress": progress,
                 "integrity": {"audit_chain_valid": bool(valid), "evidence_hashes_valid": evidence_valid,
                               "plan_hashes_valid": plans_valid,
                               "note": "Local integrity checks; a database owner can rewrite hashes. No external anchoring."}}
